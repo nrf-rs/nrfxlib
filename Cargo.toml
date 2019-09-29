@@ -1,0 +1,19 @@
+[package]
+name = "nrfxlib"
+version = "0.1.0"
+authors = ["Jonathan Pallant (42 Technology) <jonathan.pallant@42technology.com>"]
+edition = "2018"
+license = "MIT OR Apache 2.0"
+readme = "README.md"
+repository = "https://github.com/42-technology-ltd/nrfxlib"
+
+[dependencies]
+nrfxlib-sys = "0.1.5"
+nrf91 = "0.1.1"
+cortex-m = "0.6"
+heapless = "0.5"
+
+[patch.crates-io]
+# Use a special copy of byteorder, which has std support disabled
+# This is a work around for Cargo bug 5730
+byteorder = { git = "https://github.com/rust-embedded-community/byteorder" }
