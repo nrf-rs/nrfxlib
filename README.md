@@ -75,7 +75,8 @@ See [nrf9160-demo](https://github.com/42-technology-ltd/nrf9160-demo) for a demo
 
 ### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.1.0...master))
 
-* None
+* Added 'use_case' socket option for GPS.
+* Use git version of `nrfxlib-sys` which has a cargo-5730 workaround.
 
 ### v0.1.0 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.1.0))
 
