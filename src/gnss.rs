@@ -108,6 +108,15 @@ impl GnssSocket {
 		Ok(())
 	}
 
+	/// Specify whether this is the first GNSS socket that has been opened.
+	///
+	/// See Nordic for an explanation of this parameter.
+	pub fn set_first_open(&self, first: bool) -> Result<(), Error> {
+		self.0
+			.set_option(SocketOption::GnssUseCase(if first { 1 } else { 0 }))?;
+		Ok(())
+	}
+
 	/// Set the Fix Interval.
 	///
 	/// See Nordic for an explanation of this parameter.
