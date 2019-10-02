@@ -48,6 +48,9 @@ pub(crate) enum SocketOption<'a> {
 	GnssFixRetry(u16),
 	/// Controls which details are provided by the GNSS system
 	GnssNmeaMask(u16),
+	/// Controls how we are using the GNSS subsystem. It appears we should
+	/// supply 1 the first time we open the socket, and 0 subsequently.
+	GnssUseCase(u8),
 	/// Starts the GNSS system
 	GnssStart,
 	/// Stops the GNSS system
@@ -214,6 +217,7 @@ impl<'a> SocketOption<'a> {
 			SocketOption::GnssFixInterval(_) => sys::NRF_SOL_GNSS as i32,
 			SocketOption::GnssFixRetry(_) => sys::NRF_SOL_GNSS as i32,
 			SocketOption::GnssNmeaMask(_) => sys::NRF_SOL_GNSS as i32,
+			SocketOption::GnssUseCase(_) => sys::NRF_SOL_GNSS as i32,
 			SocketOption::GnssStart => sys::NRF_SOL_GNSS as i32,
 			SocketOption::GnssStop => sys::NRF_SOL_GNSS as i32,
 		}
@@ -227,6 +231,7 @@ impl<'a> SocketOption<'a> {
 			SocketOption::GnssFixInterval(_) => sys::NRF_SO_GNSS_FIX_INTERVAL as i32,
 			SocketOption::GnssFixRetry(_) => sys::NRF_SO_GNSS_FIX_RETRY as i32,
 			SocketOption::GnssNmeaMask(_) => sys::NRF_SO_GNSS_NMEA_MASK as i32,
+			SocketOption::GnssUseCase(_) => sys::NRF_SO_GNSS_USE_CASE as i32,
 			SocketOption::GnssStart => sys::NRF_SO_GNSS_START as i32,
 			SocketOption::GnssStop => sys::NRF_SO_GNSS_STOP as i32,
 		}
@@ -240,6 +245,7 @@ impl<'a> SocketOption<'a> {
 			SocketOption::GnssFixInterval(x) => x as *const u16 as *const _,
 			SocketOption::GnssFixRetry(x) => x as *const u16 as *const _,
 			SocketOption::GnssNmeaMask(x) => x as *const u16 as *const _,
+			SocketOption::GnssUseCase(x) => x as *const u8 as *const _,
 			SocketOption::GnssStart => core::ptr::null(),
 			SocketOption::GnssStop => core::ptr::null(),
 		}
@@ -253,6 +259,7 @@ impl<'a> SocketOption<'a> {
 			SocketOption::GnssFixInterval(x) => core::mem::size_of_val(x) as u32,
 			SocketOption::GnssFixRetry(x) => core::mem::size_of_val(x) as u32,
 			SocketOption::GnssNmeaMask(x) => core::mem::size_of_val(x) as u32,
+			SocketOption::GnssUseCase(x) => core::mem::size_of_val(x) as u32,
 			SocketOption::GnssStart => 0u32,
 			SocketOption::GnssStop => 0u32,
 		}
