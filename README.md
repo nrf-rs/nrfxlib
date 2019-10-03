@@ -64,7 +64,9 @@ certificate and private key, for performing client authentication.
 * Opening plain TCP connections, including DNS lookups of host-names
 * Opening TLS connections, with and without client-side certificates
 * Opening an AT socket, sending AT commands and receiving responses
-* Opening a GPS socket
+* Opening a GNSS socket and getting a GNSS fix
+* Polling on sockets
+* Configuring the chip for LTE-M, NB-IoT and/or GNSS mode.
 
 ## Example
 
@@ -75,7 +77,10 @@ See [nrf9160-demo](https://github.com/42-technology-ltd/nrf9160-demo) for a demo
 
 ### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.1.0...master))
 
-* None
+* Changed `modem::start()` to `modem::on()` and removed called to AT+COPS=0.
+* Add wrapper for `nrf_poll` to pend on multiple sockets at once.
+* Added `GnssSocket::get_blocking_fix()`
+* Added API to get/set the System Mode.
 
 ### v0.1.0 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.1.0))
 
