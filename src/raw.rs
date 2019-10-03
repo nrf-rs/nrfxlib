@@ -91,11 +91,41 @@ pub(crate) enum SocketProtocol {
 	Gnss,
 }
 
+/// Describes something we can poll on.
+pub trait Pollable {
+	#[doc(hidden)]
+	/// Get the underlying socket ID for this socket.
+	fn get_fd(&self) -> i32;
+}
+
+/// Describes a socket you wish to poll, and the result of polling it.
+pub struct PollEntry<'a> {
+	socket: &'a mut dyn Pollable,
+	flags: PollFlags,
+	result: PollResult,
+}
+
+/// The ways in which you can poll on a particular socket
+#[derive(Debug, Copy, Clone)]
+#[repr(i16)]
+pub enum PollFlags {
+	/// Wake up if this socket is readable
+	Read = sys::NRF_POLLIN as i16,
+	/// Wake up if this socket is writeable
+	Write = sys::NRF_POLLOUT as i16,
+	/// Wake up if this socket is readable or writeable
+	ReadOrWrite = sys::NRF_POLLIN as i16 + sys::NRF_POLLOUT as i16,
+}
+
+/// The ways a socket can respond to a poll.
+#[derive(Debug, Copy, Clone)]
+pub struct PollResult(u32);
+
 //******************************************************************************
 // Constants
 //******************************************************************************
 
-// None
+const MAX_SOCKETS_POLL: usize = 8;
 
 //******************************************************************************
 // Global Variables
@@ -295,6 +325,120 @@ impl Into<i32> for SocketProtocol {
 			Tcp => sys::NRF_IPPROTO_TCP as i32,
 			Tls1v2 => sys::NRF_SPROTO_TLS1v2 as i32,
 			Gnss => sys::NRF_PROTO_GNSS as i32,
+		}
+	}
+}
+
+impl PollResult {
+	/// Is polled socket now readable?
+	pub fn is_readable(&self) -> bool {
+		(self.0 & sys::NRF_POLLIN) != 0
+	}
+
+	/// Is polled socket now writeable?
+	pub fn is_writable(&self) -> bool {
+		(self.0 & sys::NRF_POLLOUT) != 0
+	}
+
+	/// Is polled socket now in an error state?
+	pub fn is_errored(&self) -> bool {
+		(self.0 & sys::NRF_POLLERR) != 0
+	}
+
+	/// Is polled socket now closed?
+	pub fn is_closed(&self) -> bool {
+		(self.0 & sys::NRF_POLLHUP) != 0
+	}
+
+	/// Was polled socket closed before we polled it?
+	pub fn was_not_open(&self) -> bool {
+		(self.0 & sys::NRF_POLLNVAL) != 0
+	}
+}
+
+impl Default for PollResult {
+	fn default() -> PollResult {
+		PollResult(0)
+	}
+}
+
+impl Pollable for Socket {
+	/// Get the underlying socket ID for this socket.
+	fn get_fd(&self) -> i32 {
+		self.fd
+	}
+}
+
+impl<'a> PollEntry<'a> {
+	/// Create a new `PollEntry` - you need a socket to poll, and what you want
+	/// to poll it for.
+	pub fn new(socket: &'a mut dyn Pollable, flags: PollFlags) -> PollEntry {
+		PollEntry {
+			socket,
+			flags,
+			result: PollResult::default(),
+		}
+	}
+
+	/// Get the result of polling this socket.
+	pub fn result(&self) -> PollResult {
+		self.result
+	}
+}
+
+/// Poll on multiple sockets at once.
+///
+/// For example:
+///
+/// ```ignore
+/// use nrfxlib::{at::AtSocket, gnss::GnssSocket, Pollable, PollFlags, PollResult};
+/// let mut socket1 = AtSocket::new();
+/// let mut socket2 = GnssSocket::new();
+/// let mut poll_list = [
+/// 	PollEntry::new(&mut socket1, PollFlags::Read),
+/// 	PollEntry::new(&mut socket2, PollFlags::Read),
+/// ];
+/// match nrfxlib::poll(&mut poll_list, 100) {
+/// 	Ok(0) => {
+///		// Timeout
+/// 	}
+/// 	Ok(n) => {
+///		// One of the sockets is ready. See `poll_list[n].result()`.
+/// 	}
+/// 	Err(e) => {
+///		// An error occurred
+/// 	}
+/// }
+/// ```
+pub fn poll(poll_list: &mut [PollEntry], timeout_ms: u16) -> Result<i32, Error> {
+	let mut count = 0;
+
+	if poll_list.len() > MAX_SOCKETS_POLL {
+		return Err(Error::TooManySockets);
+	}
+
+	let mut poll_fds: [sys::nrf_pollfd; MAX_SOCKETS_POLL] = [sys::nrf_pollfd {
+		handle: 0,
+		requested: 0,
+		returned: 0,
+	}; MAX_SOCKETS_POLL];
+
+	for (poll_entry, pollfd) in poll_list.iter_mut().zip(poll_fds.iter_mut()) {
+		pollfd.handle = poll_entry.socket.get_fd();
+		pollfd.requested = poll_entry.flags as i16;
+		count += 1;
+	}
+
+	let result = unsafe { sys::nrf_poll(poll_fds.as_mut_ptr(), count, timeout_ms as i32) };
+
+	match result {
+		-1 => Err(Error::Nordic("poll", -1, get_last_error())),
+		0 => Ok(0),
+		n => {
+			for (poll_entry, pollfd) in poll_list.iter_mut().zip(poll_fds.iter()) {
+				poll_entry.result = PollResult(pollfd.returned as u32);
+			}
+			Ok(n)
 		}
 	}
 }

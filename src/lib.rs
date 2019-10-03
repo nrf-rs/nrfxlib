@@ -57,6 +57,8 @@ pub use sys::nrf_sockaddr_in as NrfSockAddrIn;
 /// Create a camel-case type name socket addresses.
 pub use sys::nrf_addrinfo as NrfAddrInfo;
 
+pub use raw::{poll, PollEntry, PollFlags, PollResult, Pollable};
+
 //******************************************************************************
 // Types
 //******************************************************************************
@@ -77,6 +79,8 @@ pub enum Error {
 	UnrecognisedValue,
 	/// A socket write error occurred
 	WriteError,
+	/// Too many sockets given
+	TooManySockets,
 }
 
 //******************************************************************************

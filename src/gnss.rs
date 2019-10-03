@@ -322,6 +322,13 @@ impl GnssSocket {
 	}
 }
 
+impl Pollable for GnssSocket {
+	/// Get the underlying socket ID for this socket.
+	fn get_fd(&self) -> i32 {
+		self.0.fd
+	}
+}
+
 impl Drop for GnssSocket {
 	fn drop(&mut self) {
 		let _ = self.stop();
