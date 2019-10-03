@@ -73,6 +73,10 @@ pub enum Error {
 	BadDataFormat,
 	/// Given hostname was too long for internal buffers to hold
 	HostnameTooLong,
+	/// Unrecognised value from AT interface
+	UnrecognisedValue,
+	/// A socket write error occurred
+	WriteError,
 }
 
 //******************************************************************************
@@ -108,6 +112,12 @@ pub fn init() {
 pub fn shutdown() {
 	unsafe {
 		sys::bsd_shutdown();
+	}
+}
+
+impl From<core::fmt::Error> for Error {
+	fn from(_err: core::fmt::Error) -> Error {
+		Error::WriteError
 	}
 }
 

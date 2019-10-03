@@ -48,8 +48,7 @@ pub(crate) enum SocketOption<'a> {
 	GnssFixRetry(u16),
 	/// Controls which details are provided by the GNSS system
 	GnssNmeaMask(u16),
-	/// Controls how we are using the GNSS subsystem. It appears we should
-	/// supply 1 the first time we open the socket, and 0 subsequently.
+	/// Optimise the GNSS subsystem for different use-cases.
 	GnssUseCase(u8),
 	/// Starts the GNSS system
 	GnssStart,
