@@ -165,6 +165,13 @@ impl TlsSocket {
 	}
 }
 
+impl Pollable for TlsSocket {
+	/// Get the underlying socket ID for this socket.
+	fn get_fd(&self) -> i32 {
+		self.socket.fd
+	}
+}
+
 impl core::ops::DerefMut for TlsSocket {
 	fn deref_mut(&mut self) -> &mut Socket {
 		&mut self.socket

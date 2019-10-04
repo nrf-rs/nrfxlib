@@ -90,6 +90,19 @@ pub fn wait_for_lte() -> Result<(), Error> {
 	Ok(())
 }
 
+/// Powers the modem on and sets it to auto-register, but does not wait for it
+/// to connect to a network.
+pub fn on() -> Result<(), Error> {
+	crate::at::send_at_command("AT+CFUN=1", |_| {})?;
+	Ok(())
+}
+
+/// Puts the modem into flight mode.
+pub fn flight_mode() -> Result<(), Error> {
+	crate::at::send_at_command("AT+CFUN=4", |_| {})?;
+	Ok(())
+}
+
 /// Powers the modem off.
 pub fn off() -> Result<(), Error> {
 	crate::at::send_at_command("AT+CFUN=0", |_| {})?;
@@ -111,16 +124,14 @@ pub fn configure_gnss_on_pca10090ns() -> Result<(), Error> {
 
 /// Set which radios should be active. Only works when modem is off.
 pub fn set_system_mode(mode: SystemMode) -> Result<(), Error> {
-	crate::at::send_at_command(
-		match mode {
-			SystemMode::LteM => "AT%XSYSTEMMODE=1,0,0,0",
-			SystemMode::NbIot => "AT%XSYSTEMMODE=0,1,0,0",
-			SystemMode::GnssOnly => "AT%XSYSTEMMODE=0,0,1,0",
-			SystemMode::LteMAndGnss => "AT%XSYSTEMMODE=1,0,1,0",
-			SystemMode::NbIotAndGnss => "AT%XSYSTEMMODE=0,1,1,0",
-		},
-		|_| {},
-	)?;
+	let at_command = match mode {
+		SystemMode::LteM => "AT%XSYSTEMMODE=1,0,0,0",
+		SystemMode::NbIot => "AT%XSYSTEMMODE=0,1,0,0",
+		SystemMode::GnssOnly => "AT%XSYSTEMMODE=0,0,1,0",
+		SystemMode::LteMAndGnss => "AT%XSYSTEMMODE=1,0,1,0",
+		SystemMode::NbIotAndGnss => "AT%XSYSTEMMODE=0,1,1,0",
+	};
+	crate::at::send_at_command(at_command, |_| {})?;
 	Ok(())
 }
 
@@ -142,25 +153,6 @@ pub fn get_system_mode() -> Result<SystemMode, Error> {
 		}
 	})?;
 	result
-}
-
-/// Puts the modem into flight mode.
-pub fn flight_mode() -> Result<(), Error> {
-	let skt = crate::at::AtSocket::new()?;
-	// Flight Mode
-	skt.write(b"AT+CFUN=4")?;
-	Ok(())
-}
-
-/// Powers the modem on and sets it to auto-register, but does not wait for it
-/// to connect to a network.
-pub fn start() -> Result<(), Error> {
-	let skt = crate::at::AtSocket::new()?;
-	// Auto Register
-	skt.write(b"AT+COPS=0")?;
-	// Normal Mode
-	skt.write(b"AT+CFUN=1")?;
-	Ok(())
 }
 
 //******************************************************************************

@@ -64,6 +64,13 @@ impl AtSocket {
 	}
 }
 
+impl Pollable for AtSocket {
+	/// Get the underlying socket ID for this socket.
+	fn get_fd(&self) -> i32 {
+		self.0.fd
+	}
+}
+
 impl core::ops::DerefMut for AtSocket {
 	fn deref_mut(&mut self) -> &mut Socket {
 		&mut self.0

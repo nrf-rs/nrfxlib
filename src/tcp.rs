@@ -143,6 +143,13 @@ impl TcpSocket {
 	}
 }
 
+impl Pollable for TcpSocket {
+	/// Get the underlying socket ID for this socket.
+	fn get_fd(&self) -> i32 {
+		self.socket.fd
+	}
+}
+
 impl core::ops::DerefMut for TcpSocket {
 	fn deref_mut(&mut self) -> &mut Socket {
 		&mut self.socket
