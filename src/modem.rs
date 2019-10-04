@@ -124,16 +124,14 @@ pub fn configure_gnss_on_pca10090ns() -> Result<(), Error> {
 
 /// Set which radios should be active. Only works when modem is off.
 pub fn set_system_mode(mode: SystemMode) -> Result<(), Error> {
-	crate::at::send_at_command(
-		match mode {
-			SystemMode::LteM => "AT%XSYSTEMMODE=1,0,0,0",
-			SystemMode::NbIot => "AT%XSYSTEMMODE=0,1,0,0",
-			SystemMode::GnssOnly => "AT%XSYSTEMMODE=0,0,1,0",
-			SystemMode::LteMAndGnss => "AT%XSYSTEMMODE=1,0,1,0",
-			SystemMode::NbIotAndGnss => "AT%XSYSTEMMODE=0,1,1,0",
-		},
-		|_| {},
-	)?;
+	let at_command = match mode {
+		SystemMode::LteM => "AT%XSYSTEMMODE=1,0,0,0",
+		SystemMode::NbIot => "AT%XSYSTEMMODE=0,1,0,0",
+		SystemMode::GnssOnly => "AT%XSYSTEMMODE=0,0,1,0",
+		SystemMode::LteMAndGnss => "AT%XSYSTEMMODE=1,0,1,0",
+		SystemMode::NbIotAndGnss => "AT%XSYSTEMMODE=0,1,1,0",
+	};
+	crate::at::send_at_command(at_command, |_| {})?;
 	Ok(())
 }
 
