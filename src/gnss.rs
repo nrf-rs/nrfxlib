@@ -63,6 +63,17 @@ pub enum NmeaField {
 	/// Enables Recommended minimum specific GPS/Transit data.
 	RecommendedMinimumSpecificFixData = sys::NRF_CONFIG_NMEA_RMC_MASK as u16,
 }
+
+/// A particular use-case the GNSS should optimise for.
+#[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(u8)]
+pub enum UseCase {
+	/// Single cold start performance targeted
+	SingleColdStart = 0,
+	/// Multiple hot start performance targeted
+	MultipleHotStart = 1,
+}
+
 //******************************************************************************
 // Constants
 //******************************************************************************
@@ -108,12 +119,12 @@ impl GnssSocket {
 		Ok(())
 	}
 
-	/// Specify whether this is the first GNSS socket that has been opened.
+	/// Specify which use-case the GNSS sub-system should optimise for.
 	///
 	/// See Nordic for an explanation of this parameter.
-	pub fn set_first_open(&self, first: bool) -> Result<(), Error> {
+	pub fn set_use_case(&self, use_case: UseCase) -> Result<(), Error> {
 		self.0
-			.set_option(SocketOption::GnssUseCase(if first { 1 } else { 0 }))?;
+			.set_option(SocketOption::GnssUseCase(use_case as u8))?;
 		Ok(())
 	}
 
@@ -216,7 +227,7 @@ impl GnssSocket {
 	/// Performs a read on the GNSS socket and returns either a
 	/// `GnssData::Nmea`, if an NMEA string has been returned, or a
 	/// `GnssData::Position`. The Nordic library determines which you get on
-	/// each read.
+	/// each read. You will get `None` if there is no fix to be read.
 	pub fn get_fix(&self) -> Result<Option<GnssData>, Error> {
 		let mut frame = core::mem::MaybeUninit::<sys::nrf_gnss_data_frame_t>::uninit();
 		let buffer_size = core::mem::size_of::<sys::nrf_gnss_data_frame_t>();
@@ -228,7 +239,35 @@ impl GnssSocket {
 				sys::NRF_MSG_DONTWAIT as i32,
 			)
 		};
+		self.process_fix(result, frame)
+	}
 
+	/// Wait for a fix from the GNSS system.
+	///
+	/// Performs a read on the GNSS socket and returns either a
+	/// `GnssData::Nmea`, if an NMEA string has been returned, or a
+	/// `GnssData::Position`. The Nordic library determines which you get on
+	/// each read. You will get `None` if there is no fix to be read.
+	pub fn get_fix_blocking(&self) -> Result<Option<GnssData>, Error> {
+		let mut frame = core::mem::MaybeUninit::<sys::nrf_gnss_data_frame_t>::uninit();
+		let buffer_size = core::mem::size_of::<sys::nrf_gnss_data_frame_t>();
+		let result = unsafe {
+			sys::nrf_recv(
+				self.0.fd,
+				frame.as_mut_ptr() as *mut sys::ctypes::c_void,
+				buffer_size,
+				0,
+			)
+		};
+		self.process_fix(result, frame)
+	}
+
+	/// Parse the data returned from a GNSS socket read.
+	fn process_fix(
+		&self,
+		result: isize,
+		frame: core::mem::MaybeUninit<sys::nrf_gnss_data_frame_t>,
+	) -> Result<Option<GnssData>, Error> {
 		match result {
 			0 => {
 				// No fix available
@@ -261,7 +300,7 @@ impl GnssSocket {
 						.iter()
 						.cloned()
 						.enumerate()
-						.find(|x| x.1 == 0 || x.1 == b'\r' || x.1 == b'\n')
+						.find(|x| x.1 == b'\0' || x.1 == b'\r' || x.1 == b'\n')
 						.map(|x| x.0)
 						.unwrap_or(0);
 					if core::str::from_utf8(&nmea[0..string_length]).is_ok() {
@@ -302,12 +341,22 @@ impl core::ops::DerefMut for GnssSocket {
 	}
 }
 
+impl GnssData {
+	/// Returns true if this fix is valid (i.e. is an NMEA string or has the valid flag set).
+	pub fn is_valid(&self) -> bool {
+		match self {
+			GnssData::Nmea { .. } => true,
+			GnssData::Position(p) => (p.flags & sys::NRF_GNSS_PVT_FLAG_FIX_VALID_BIT as u8) != 0,
+		}
+	}
+}
+
 impl core::fmt::Debug for GnssData {
 	fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
 		match self {
 			GnssData::Nmea { buffer, length } => {
 				// NOTE(unsafe) - we checked this when we created the GnssData on line 890
-				let nmea_str = unsafe { core::str::from_utf8_unchecked(&buffer[0..=*length]) };
+				let nmea_str = unsafe { core::str::from_utf8_unchecked(&buffer[0..*length]) };
 				fmt.debug_struct("GnssData")
 					.field("nmea", &nmea_str)
 					.finish()
