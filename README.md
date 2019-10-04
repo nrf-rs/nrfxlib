@@ -81,6 +81,8 @@ See [nrf9160-demo](https://github.com/42-technology-ltd/nrf9160-demo) for a demo
 * Add wrapper for `nrf_poll` to pend on multiple sockets at once.
 * Added `GnssSocket::get_blocking_fix()`
 * Added API to get/set the System Mode.
+* Added 'use_case' socket option for GPS.
+* Use git version of `nrfxlib-sys` which has a cargo-5730 workaround.
 
 ### v0.1.0 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.1.0))
 
