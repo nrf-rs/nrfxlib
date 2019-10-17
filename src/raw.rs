@@ -100,7 +100,7 @@ pub trait Pollable {
 
 /// Describes a socket you wish to poll, and the result of polling it.
 pub struct PollEntry<'a> {
-	socket: &'a mut dyn Pollable,
+	socket: &'a dyn Pollable,
 	flags: PollFlags,
 	result: PollResult,
 }
@@ -372,7 +372,7 @@ impl Pollable for Socket {
 impl<'a> PollEntry<'a> {
 	/// Create a new `PollEntry` - you need a socket to poll, and what you want
 	/// to poll it for.
-	pub fn new(socket: &'a mut dyn Pollable, flags: PollFlags) -> PollEntry {
+	pub fn new(socket: &'a dyn Pollable, flags: PollFlags) -> PollEntry {
 		PollEntry {
 			socket,
 			flags,
