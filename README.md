@@ -76,7 +76,7 @@ See [nrf9160-demo](https://github.com/42-technology-ltd/nrf9160-demo) for a demo
 
 ### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.2.0...master))
 
-* None
+* Change PollEntry so it holds a const-reference rather than a mutable-reference to the socket.
 
 ### v0.2.0 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.1.0) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.1.0...v0.2.0)
 
