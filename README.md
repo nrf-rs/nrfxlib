@@ -27,8 +27,8 @@ We use a crate called `nrfxlib-sys` to link to the library. This crate
 includes Nordic's header files and static library as a git sub-module (from
 their [Github page](https://github.com/NordicPlayground/nrfxlib)) and runs
 [`bindgen`] to generate Rust 'headers' which correspond to the functions and
-constants in the relevant header files. You will need LLVM to be installed for
-[`bindgen`] to work, so please do see their
+constants in the relevant header files. You will need bindgen and LLVM to
+be installed for [`bindgen`] to work, so please do see their
 [documentation](https://github.com/rust-lang/rust-bindgen).
 
 [`bindgen`]: https://crates.io/crates/bindgen
@@ -77,7 +77,7 @@ See [nrf9160-demo](https://github.com/42-technology-ltd/nrf9160-demo) for a demo
 ### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.2.0...master))
 
 * Change PollEntry so it holds a const-reference rather than a mutable-reference to the socket.
-* Use local git-submodule of nrfxlib-sys
+* Use latest nrfxlib-sys crate.
 
 ### v0.2.0 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.1.0) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.1.0...v0.2.0)
 
