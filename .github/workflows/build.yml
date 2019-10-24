@@ -22,9 +22,5 @@ jobs:
           override: true
       - uses: actions-rs/cargo@v1
         with:
-          command: install
-          args: bindgen
-      - uses: actions-rs/cargo@v1
-        with:
           command: build
           args: --release --target=${{ matrix.target }}
