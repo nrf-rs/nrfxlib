@@ -9,10 +9,7 @@ repository = "https://github.com/42-technology-ltd/nrfxlib"
 description = "Rust driver for the LTE stack on the Nordic nRF9160"
 
 [dependencies]
-# This version uses cargo-5730 to work around the dep/build-dep issue.
-# But it can't be published with cargo publish, and we can't publish this crate with git dep,
-# so we have it as a sub-module.
-nrfxlib-sys = { path = "./nrfxlib-sys" }
+nrfxlib-sys = "0.2"
 nrf91 = "0.1.1"
 cortex-m = "0.6"
 heapless = "0.5"
