@@ -1,6 +1,6 @@
 [package]
 name = "nrfxlib"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Jonathan Pallant (42 Technology) <jonathan.pallant@42technology.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
