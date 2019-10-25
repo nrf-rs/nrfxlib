@@ -76,10 +76,14 @@ See [nrf9160-demo](https://github.com/42-technology-ltd/nrf9160-demo) for a demo
 
 ### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.2.0...master))
 
+* None
+
+### v0.2.1 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.2.1) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.2.0...v0.2.1)
+
 * Change PollEntry so it holds a const-reference rather than a mutable-reference to the socket.
 * Use latest nrfxlib-sys crate.
 
-### v0.2.0 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.1.0) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.1.0...v0.2.0)
+### v0.2.0 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.2.0) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.1.0...v0.2.0)
 
 * Changed `modem::start()` to `modem::on()` and removed called to AT+COPS=0.
 * Add wrapper for `nrf_poll` to pend on multiple sockets at once.
