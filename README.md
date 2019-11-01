@@ -76,7 +76,7 @@ See [nrf9160-demo](https://github.com/42-technology-ltd/nrf9160-demo) for a demo
 
 ### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.2.0...master))
 
-* None
+* Derive `clone` for `Error`.
 
 ### v0.2.2 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.2.2) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.2.1...v0.2.2))
 

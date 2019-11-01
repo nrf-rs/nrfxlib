@@ -64,7 +64,7 @@ pub use raw::{poll, PollEntry, PollFlags, PollResult, Pollable};
 //******************************************************************************
 
 /// The set of error codes we can get from this API.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Error {
 	/// An error was returned by the Nordic library. We supply a string
 	/// descriptor, the return code, and the value of `errno`.
