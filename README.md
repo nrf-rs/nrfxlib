@@ -74,7 +74,11 @@ See [nrf9160-demo](https://github.com/42-technology-ltd/nrf9160-demo) for a demo
 
 ## Changelog
 
-### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.2.2...master))
+### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.3.0...master))
+
+* None
+
+### v0.3.0 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.3.0) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.2.2...v0.3.0))
 
 * Derive `clone` for `Error`.
 * Update to latest `nrxflib-sys` crate.
