@@ -44,14 +44,14 @@ pub(crate) enum SocketOption<'a> {
 	/// value of 0 means single-fix mode.
 	GnssFixInterval(u16),
 	/// Defines how long (in seconds) the receiver should try to get a fix.
-	/// The default is 60 seconds.
+	/// The default is 60 seconds. 0 means wait forever.
 	GnssFixRetry(u16),
-	/// Controls which details are provided by the GNSS system
+	/// Controls which, if any, NMEA frames are provided by the GNSS system
 	GnssNmeaMask(u16),
 	/// Optimise the GNSS subsystem for different use-cases.
 	GnssUseCase(u8),
-	/// Starts the GNSS system
-	GnssStart,
+	/// Starts the GNSS system, after deleting the specified non-volatile values.
+	GnssStart(u32),
 	/// Stops the GNSS system
 	GnssStop,
 }
@@ -247,7 +247,7 @@ impl<'a> SocketOption<'a> {
 			SocketOption::GnssFixRetry(_) => sys::NRF_SOL_GNSS as i32,
 			SocketOption::GnssNmeaMask(_) => sys::NRF_SOL_GNSS as i32,
 			SocketOption::GnssUseCase(_) => sys::NRF_SOL_GNSS as i32,
-			SocketOption::GnssStart => sys::NRF_SOL_GNSS as i32,
+			SocketOption::GnssStart(_) => sys::NRF_SOL_GNSS as i32,
 			SocketOption::GnssStop => sys::NRF_SOL_GNSS as i32,
 		}
 	}
@@ -261,7 +261,7 @@ impl<'a> SocketOption<'a> {
 			SocketOption::GnssFixRetry(_) => sys::NRF_SO_GNSS_FIX_RETRY as i32,
 			SocketOption::GnssNmeaMask(_) => sys::NRF_SO_GNSS_NMEA_MASK as i32,
 			SocketOption::GnssUseCase(_) => sys::NRF_SO_GNSS_USE_CASE as i32,
-			SocketOption::GnssStart => sys::NRF_SO_GNSS_START as i32,
+			SocketOption::GnssStart(_) => sys::NRF_SO_GNSS_START as i32,
 			SocketOption::GnssStop => sys::NRF_SO_GNSS_STOP as i32,
 		}
 	}
@@ -275,7 +275,7 @@ impl<'a> SocketOption<'a> {
 			SocketOption::GnssFixRetry(x) => x as *const u16 as *const _,
 			SocketOption::GnssNmeaMask(x) => x as *const u16 as *const _,
 			SocketOption::GnssUseCase(x) => x as *const u8 as *const _,
-			SocketOption::GnssStart => core::ptr::null(),
+			SocketOption::GnssStart(x) => x as *const u32 as *const _,
 			SocketOption::GnssStop => core::ptr::null(),
 		}
 	}
@@ -289,7 +289,7 @@ impl<'a> SocketOption<'a> {
 			SocketOption::GnssFixRetry(x) => core::mem::size_of_val(x) as u32,
 			SocketOption::GnssNmeaMask(x) => core::mem::size_of_val(x) as u32,
 			SocketOption::GnssUseCase(x) => core::mem::size_of_val(x) as u32,
-			SocketOption::GnssStart => 0u32,
+			SocketOption::GnssStart(x) => core::mem::size_of_val(x) as u32,
 			SocketOption::GnssStop => 0u32,
 		}
 	}

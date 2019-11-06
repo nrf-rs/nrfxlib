@@ -42,6 +42,8 @@ pub enum GnssData {
 	/// A Nordic-supplied structure containing position, time and SV
 	/// information.
 	Position(sys::nrf_gnss_pvt_data_frame_t),
+	/// AGPS data
+	Agps(sys::nrf_gnss_agps_data_frame_t),
 }
 
 /// Specifies which NMEA fields you want from the GNSS sub-system.
@@ -72,6 +74,32 @@ pub enum UseCase {
 	SingleColdStart = 0,
 	/// Multiple hot start performance targeted
 	MultipleHotStart = 1,
+}
+
+/// Specifies which non-volatile fields you want to delete before starting the GNSS.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct DeleteMask(u32);
+
+/// The specific fields you can enable or disable in an `DeleteMask`.
+#[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(u32)]
+pub enum DeleteField {
+	/// Bit 0 denotes ephemerides data.
+	Ephemerides = 1 << 0,
+	/// Bit 1 denotes almanac data (excluding leap second and ionospheric correction parameters).
+	Almanac = 1 << 1,
+	/// Bit 2 denotes ionospheric correction parameters data.
+	IonosphericCorrection = 1 << 2,
+	/// Bit 3 denotes last good fix (the last position) data.
+	LastGoodFix = 1 << 3,
+	/// Bit 4 denotes GPS time-of-week (TOW) data.
+	TimeOfWeek = 1 << 4,
+	/// Bit 5 denotes GPS week number data.
+	WeekNumber = 1 << 5,
+	/// Bit 6 denotes leap second (UTC parameters) data.
+	LeapSecond = 1 << 6,
+	/// Bit 7 denotes local clock (TCXO) frequency offset data.
+	LocalClockFrequencyOffset = 1 << 7,
 }
 
 //******************************************************************************
@@ -108,8 +136,9 @@ impl GnssSocket {
 	}
 
 	/// Start the GNSS system.
-	pub fn start(&self) -> Result<(), Error> {
-		self.0.set_option(SocketOption::GnssStart)?;
+	pub fn start(&self, delete_mask: DeleteMask) -> Result<(), Error> {
+		self.0
+			.set_option(SocketOption::GnssStart(delete_mask.as_u32()))?;
 		Ok(())
 	}
 
@@ -224,10 +253,9 @@ impl GnssSocket {
 
 	/// Get a fix from the GNSS system.
 	///
-	/// Performs a read on the GNSS socket and returns either a
-	/// `GnssData::Nmea`, if an NMEA string has been returned, or a
-	/// `GnssData::Position`. The Nordic library determines which you get on
-	/// each read. You will get `None` if there is no fix to be read.
+	/// Performs a read on the GNSS socket. The Nordic library determines which
+	/// frame type you get on each read. You will get `None` if there is no fix
+	/// to be read.
 	pub fn get_fix(&self) -> Result<Option<GnssData>, Error> {
 		let mut frame = core::mem::MaybeUninit::<sys::nrf_gnss_data_frame_t>::uninit();
 		let buffer_size = core::mem::size_of::<sys::nrf_gnss_data_frame_t>();
@@ -313,6 +341,11 @@ impl GnssSocket {
 						// Not a UTF-8 string
 						Err(Error::BadDataFormat)
 					}
+				} else if frame.data_id as u32 == sys::NRF_GNSS_AGPS_DATA_ID {
+					// We have frame.agps
+					// NOTE(unsafe) - we have to trust that the Nordic library has given us enough bytes for the frame.
+					let agps = unsafe { frame.__bindgen_anon_1.agps };
+					Ok(Some(GnssData::Agps(agps)))
 				} else {
 					// Not a known data type
 					Err(Error::BadDataFormat)
@@ -399,6 +432,35 @@ impl NmeaField {
 	/// Convert an NmeaField into an integer
 	fn value(self) -> u16 {
 		self as u16
+	}
+}
+
+impl DeleteMask {
+	/// Create a new DeleteMask, which selects nothing to be deleted.
+	pub fn new() -> Self {
+		DeleteMask(0)
+	}
+
+	/// Mark a particular field as requiring deletion.
+	pub fn set(self, field: DeleteField) -> Self {
+		DeleteMask(self.0 | field.value())
+	}
+
+	/// Unmark a particular field as requiring deletion.
+	pub fn clear(self, field: DeleteField) -> Self {
+		DeleteMask(self.0 & !field.value())
+	}
+
+	/// Convert to an integer, for the socket to consume.
+	pub fn as_u32(self) -> u32 {
+		self.0
+	}
+}
+
+impl DeleteField {
+	/// Convert an DeleteField into an integer
+	fn value(self) -> u32 {
+		self as u32
 	}
 }
 
