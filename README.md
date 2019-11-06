@@ -74,9 +74,11 @@ See [nrf9160-demo](https://github.com/42-technology-ltd/nrf9160-demo) for a demo
 
 ## Changelog
 
-### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.2.0...master))
+### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.2.2...master))
 
 * Derive `clone` for `Error`.
+* Update to latest `nrxflib-sys` crate.
+* Update wrappers for updated GPS API.
 
 ### v0.2.2 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.2.2) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.2.1...v0.2.2))
 
