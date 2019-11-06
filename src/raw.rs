@@ -36,20 +36,20 @@ pub struct Socket {
 pub(crate) enum SocketOption<'a> {
 	/// Set the host name for the TLS certificate to match
 	TlsHostName(&'a str),
-	/// Pass 1 is you want to verify the peer you are connecting to.
-	TlsPeerVerify(i32),
+	/// 0 implies no peer verification. 1 implies peer verification is optional. 2 implies peer verification is strict (mandatory).
+	TlsPeerVerify(sys::nrf_sec_peer_verify_t),
 	/// A list of the TLS security/key tags you want to use
-	TlsTagList(&'a [u32]),
+	TlsTagList(&'a [sys::nrf_sec_tag_t]),
 	/// Defines the interval between each fix in seconds. The default is 1. A
 	/// value of 0 means single-fix mode.
-	GnssFixInterval(u16),
+	GnssFixInterval(sys::nrf_gnss_fix_interval_t),
 	/// Defines how long (in seconds) the receiver should try to get a fix.
 	/// The default is 60 seconds. 0 means wait forever.
-	GnssFixRetry(u16),
+	GnssFixRetry(sys::nrf_gnss_fix_retry_t),
 	/// Controls which, if any, NMEA frames are provided by the GNSS system
-	GnssNmeaMask(u16),
+	GnssNmeaMask(sys::nrf_gnss_nmea_mask_t),
 	/// Starts the GNSS system, after deleting the specified non-volatile values.
-	GnssStart(u32),
+	GnssStart(sys::nrf_gnss_delete_mask_t),
 	/// Stops the GNSS system
 	GnssStop,
 }
@@ -264,13 +264,13 @@ impl<'a> SocketOption<'a> {
 
 	pub(crate) fn get_value(&self) -> *const sys::ctypes::c_void {
 		match self {
-			SocketOption::TlsHostName(s) => s.as_ptr() as *const _,
-			SocketOption::TlsPeerVerify(x) => x as *const i32 as *const _,
-			SocketOption::TlsTagList(x) => x.as_ptr() as *const _,
-			SocketOption::GnssFixInterval(x) => x as *const u16 as *const _,
-			SocketOption::GnssFixRetry(x) => x as *const u16 as *const _,
-			SocketOption::GnssNmeaMask(x) => x as *const u16 as *const _,
-			SocketOption::GnssStart(x) => x as *const u32 as *const _,
+			SocketOption::TlsHostName(s) => s.as_ptr() as *const sys::ctypes::c_void,
+			SocketOption::TlsPeerVerify(x) => x as *const _ as *const sys::ctypes::c_void,
+			SocketOption::TlsTagList(x) => x.as_ptr() as *const sys::ctypes::c_void,
+			SocketOption::GnssFixInterval(x) => x as *const _ as *const sys::ctypes::c_void,
+			SocketOption::GnssFixRetry(x) => x as *const _ as *const sys::ctypes::c_void,
+			SocketOption::GnssNmeaMask(x) => x as *const _ as *const sys::ctypes::c_void,
+			SocketOption::GnssStart(x) => x as *const _ as *const sys::ctypes::c_void,
 			SocketOption::GnssStop => core::ptr::null(),
 		}
 	}
