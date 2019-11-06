@@ -42,6 +42,8 @@ pub enum GnssData {
 	/// A Nordic-supplied structure containing position, time and SV
 	/// information.
 	Position(sys::nrf_gnss_pvt_data_frame_t),
+	/// AGPS data
+	Agps(sys::nrf_gnss_agps_data_frame_t),
 }
 
 /// Specifies which NMEA fields you want from the GNSS sub-system.
@@ -53,25 +55,41 @@ pub struct NmeaMask(u16);
 #[repr(u16)]
 pub enum NmeaField {
 	/// Enables Global Positioning System Fix Data.
-	GpsFixData = sys::NRF_CONFIG_NMEA_GGA_MASK as u16,
+	GpsFixData = sys::NRF_GNSS_NMEA_GGA_MASK as u16,
 	/// Enables Geographic Position Latitude/Longitude and time.
-	LatLongTime = sys::NRF_CONFIG_NMEA_GLL_MASK as u16,
+	LatLongTime = sys::NRF_GNSS_NMEA_GLL_MASK as u16,
 	/// Enables DOP and active satellites.
-	DopAndActiveSatellites = sys::NRF_CONFIG_NMEA_GSA_MASK as u16,
+	DopAndActiveSatellites = sys::NRF_GNSS_NMEA_GSA_MASK as u16,
 	/// Enables Satellites in view.
-	SatellitesInView = sys::NRF_CONFIG_NMEA_GSV_MASK as u16,
+	SatellitesInView = sys::NRF_GNSS_NMEA_GSV_MASK as u16,
 	/// Enables Recommended minimum specific GPS/Transit data.
-	RecommendedMinimumSpecificFixData = sys::NRF_CONFIG_NMEA_RMC_MASK as u16,
+	RecommendedMinimumSpecificFixData = sys::NRF_GNSS_NMEA_RMC_MASK as u16,
 }
 
-/// A particular use-case the GNSS should optimise for.
+/// Specifies which non-volatile fields you want to delete before starting the GNSS.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct DeleteMask(u32);
+
+/// The specific fields you can enable or disable in a `DeleteMask`.
 #[derive(Copy, Clone, Eq, PartialEq)]
-#[repr(u8)]
-pub enum UseCase {
-	/// Single cold start performance targeted
-	SingleColdStart = 0,
-	/// Multiple hot start performance targeted
-	MultipleHotStart = 1,
+#[repr(u32)]
+pub enum DeleteField {
+	/// Bit 0 denotes ephemerides data.
+	Ephemerides = 1 << 0,
+	/// Bit 1 denotes almanac data (excluding leap second and ionospheric correction parameters).
+	Almanac = 1 << 1,
+	/// Bit 2 denotes ionospheric correction parameters data.
+	IonosphericCorrection = 1 << 2,
+	/// Bit 3 denotes last good fix (the last position) data.
+	LastGoodFix = 1 << 3,
+	/// Bit 4 denotes GPS time-of-week (TOW) data.
+	TimeOfWeek = 1 << 4,
+	/// Bit 5 denotes GPS week number data.
+	WeekNumber = 1 << 5,
+	/// Bit 6 denotes leap second (UTC parameters) data.
+	LeapSecond = 1 << 6,
+	/// Bit 7 denotes local clock (TCXO) frequency offset data.
+	LocalClockFrequencyOffset = 1 << 7,
 }
 
 //******************************************************************************
@@ -107,9 +125,11 @@ impl GnssSocket {
 		Ok(GnssSocket(skt))
 	}
 
-	/// Start the GNSS system.
-	pub fn start(&self) -> Result<(), Error> {
-		self.0.set_option(SocketOption::GnssStart)?;
+	/// Deletes the specified information from non-volatile memory, then starts
+	/// the GNSS sub-system.
+	pub fn start(&self, delete_mask: DeleteMask) -> Result<(), Error> {
+		self.0
+			.set_option(SocketOption::GnssStart(delete_mask.as_u32()))?;
 		Ok(())
 	}
 
@@ -119,18 +139,10 @@ impl GnssSocket {
 		Ok(())
 	}
 
-	/// Specify which use-case the GNSS sub-system should optimise for.
-	///
-	/// See Nordic for an explanation of this parameter.
-	pub fn set_use_case(&self, use_case: UseCase) -> Result<(), Error> {
-		self.0
-			.set_option(SocketOption::GnssUseCase(use_case as u8))?;
-		Ok(())
-	}
-
 	/// Set the Fix Interval.
 	///
-	/// See Nordic for an explanation of this parameter.
+	/// Defines the interval between each fix in seconds. The default is 1. A
+	/// value of 0 means single-fix mode.
 	pub fn set_fix_interval(&self, interval: u16) -> Result<(), Error> {
 		self.0.set_option(SocketOption::GnssFixInterval(interval))?;
 		Ok(())
@@ -138,15 +150,16 @@ impl GnssSocket {
 
 	/// Set the Fix Retry time.
 	///
-	/// See Nordic for an explanation of this parameter.
+	/// Defines how long (in seconds) the receiver should try to get a fix. The
+	/// default is 60 seconds and a value of 0 means wait forever.
 	pub fn set_fix_retry(&self, interval: u16) -> Result<(), Error> {
 		self.0.set_option(SocketOption::GnssFixRetry(interval))?;
 		Ok(())
 	}
 
-	/// Get the current Fix Interval.
+	/// Get the current Fix Interval (in seconds).
 	///
-	/// See Nordic for an explanation of this parameter.
+	/// See `set_fix_interval` for more information.
 	pub fn get_fix_interval(&self) -> Result<u16, Error> {
 		let mut length: u32 = core::mem::size_of::<u16>() as u32;
 		let mut value = 0u16;
@@ -166,9 +179,9 @@ impl GnssSocket {
 		}
 	}
 
-	/// Get the Fix Retry time.
+	/// Get the Fix Retry time (in seconds).
 	///
-	/// See Nordic for an explanation of this parameter.
+	/// See `set_fix_retry` for more information.
 	pub fn get_fix_retry(&self) -> Result<u16, Error> {
 		let mut length: u32 = core::mem::size_of::<u16>() as u32;
 		let mut value = 0u16;
@@ -192,8 +205,8 @@ impl GnssSocket {
 	///
 	/// You can select which particular NMEA strings you want from the GNSS socket here.
 	///
-	/// If you pass a default `NmeaMask`, you get no NMEA strings (only
-	/// `GnssData::Position`).
+	/// If you pass a default `NmeaMask`, you get no NMEA frames (only
+	/// `GnssData::Position` or `GnssData::Agps` frames).
 	pub fn set_nmea_mask(&self, mask: NmeaMask) -> Result<(), Error> {
 		self.0
 			.set_option(SocketOption::GnssNmeaMask(mask.as_u16()))?;
@@ -224,10 +237,9 @@ impl GnssSocket {
 
 	/// Get a fix from the GNSS system.
 	///
-	/// Performs a read on the GNSS socket and returns either a
-	/// `GnssData::Nmea`, if an NMEA string has been returned, or a
-	/// `GnssData::Position`. The Nordic library determines which you get on
-	/// each read. You will get `None` if there is no fix to be read.
+	/// Performs a read on the GNSS socket. The Nordic library determines which
+	/// frame type you get on each read. You will get `None` if there is no fix
+	/// to be read.
 	pub fn get_fix(&self) -> Result<Option<GnssData>, Error> {
 		let mut frame = core::mem::MaybeUninit::<sys::nrf_gnss_data_frame_t>::uninit();
 		let buffer_size = core::mem::size_of::<sys::nrf_gnss_data_frame_t>();
@@ -263,6 +275,9 @@ impl GnssSocket {
 	}
 
 	/// Parse the data returned from a GNSS socket read.
+	///
+	/// We get either an NMEA frame, a Position frame, or an AGPS frame. We
+	/// know which we've got based on the `data_id` field.
 	fn process_fix(
 		&self,
 		result: isize,
@@ -313,6 +328,11 @@ impl GnssSocket {
 						// Not a UTF-8 string
 						Err(Error::BadDataFormat)
 					}
+				} else if frame.data_id as u32 == sys::NRF_GNSS_AGPS_DATA_ID {
+					// We have frame.agps
+					// NOTE(unsafe) - we have to trust that the Nordic library has given us enough bytes for the frame.
+					let agps = unsafe { frame.__bindgen_anon_1.agps };
+					Ok(Some(GnssData::Agps(agps)))
 				} else {
 					// Not a known data type
 					Err(Error::BadDataFormat)
@@ -349,11 +369,12 @@ impl core::ops::DerefMut for GnssSocket {
 }
 
 impl GnssData {
-	/// Returns true if this fix is valid (i.e. is an NMEA string or has the valid flag set).
+	/// Returns true if this fix is valid (i.e. is a position frame, AND has the valid flag set).
 	pub fn is_valid(&self) -> bool {
 		match self {
-			GnssData::Nmea { .. } => true,
+			GnssData::Nmea { .. } => false,
 			GnssData::Position(p) => (p.flags & sys::NRF_GNSS_PVT_FLAG_FIX_VALID_BIT as u8) != 0,
+			GnssData::Agps { .. } => false,
 		}
 	}
 }
@@ -369,6 +390,7 @@ impl core::fmt::Debug for GnssData {
 					.finish()
 			}
 			GnssData::Position(p) => fmt.debug_struct("GnssData").field("position", &p).finish(),
+			GnssData::Agps(p) => fmt.debug_struct("GnssData").field("agps", &p).finish(),
 		}
 	}
 }
@@ -399,6 +421,35 @@ impl NmeaField {
 	/// Convert an NmeaField into an integer
 	fn value(self) -> u16 {
 		self as u16
+	}
+}
+
+impl DeleteMask {
+	/// Create a new DeleteMask, which selects nothing to be deleted.
+	pub fn new() -> Self {
+		DeleteMask(0)
+	}
+
+	/// Mark a particular field as requiring deletion.
+	pub fn set(self, field: DeleteField) -> Self {
+		DeleteMask(self.0 | field.value())
+	}
+
+	/// Unmark a particular field as requiring deletion.
+	pub fn clear(self, field: DeleteField) -> Self {
+		DeleteMask(self.0 & !field.value())
+	}
+
+	/// Convert to an integer, for the socket to consume.
+	pub fn as_u32(self) -> u32 {
+		self.0
+	}
+}
+
+impl DeleteField {
+	/// Convert an DeleteField into an integer
+	fn value(self) -> u32 {
+		self as u32
 	}
 }
 

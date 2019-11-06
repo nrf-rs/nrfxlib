@@ -1,6 +1,6 @@
 [package]
 name = "nrfxlib"
-version = "0.2.2"
+version = "0.3.0"
 authors = ["Jonathan Pallant (42 Technology) <jonathan.pallant@42technology.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -9,7 +9,7 @@ repository = "https://github.com/42-technology-ltd/nrfxlib"
 description = "Rust driver for the LTE stack on the Nordic nRF9160"
 
 [dependencies]
-nrfxlib-sys = "0.2"
+nrfxlib-sys = "1.1.0-rc2"
 nrf91 = "0.1.1"
 cortex-m = "0.6"
 heapless = "0.5"
