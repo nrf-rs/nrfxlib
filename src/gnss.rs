@@ -53,15 +53,15 @@ pub struct NmeaMask(u16);
 #[repr(u16)]
 pub enum NmeaField {
 	/// Enables Global Positioning System Fix Data.
-	GpsFixData = sys::NRF_CONFIG_NMEA_GGA_MASK as u16,
+	GpsFixData = sys::NRF_GNSS_NMEA_GGA_MASK as u16,
 	/// Enables Geographic Position Latitude/Longitude and time.
-	LatLongTime = sys::NRF_CONFIG_NMEA_GLL_MASK as u16,
+	LatLongTime = sys::NRF_GNSS_NMEA_GLL_MASK as u16,
 	/// Enables DOP and active satellites.
-	DopAndActiveSatellites = sys::NRF_CONFIG_NMEA_GSA_MASK as u16,
+	DopAndActiveSatellites = sys::NRF_GNSS_NMEA_GSA_MASK as u16,
 	/// Enables Satellites in view.
-	SatellitesInView = sys::NRF_CONFIG_NMEA_GSV_MASK as u16,
+	SatellitesInView = sys::NRF_GNSS_NMEA_GSV_MASK as u16,
 	/// Enables Recommended minimum specific GPS/Transit data.
-	RecommendedMinimumSpecificFixData = sys::NRF_CONFIG_NMEA_RMC_MASK as u16,
+	RecommendedMinimumSpecificFixData = sys::NRF_GNSS_NMEA_RMC_MASK as u16,
 }
 
 /// A particular use-case the GNSS should optimise for.
