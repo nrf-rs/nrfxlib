@@ -9,7 +9,8 @@ repository = "https://github.com/42-technology-ltd/nrfxlib"
 description = "Rust driver for the LTE stack on the Nordic nRF9160"
 
 [dependencies]
-nrfxlib-sys = "0.2"
+# nrfxlib-sys = "0.2"
+nrfxlib-sys = { path = "../nrfxlib-sys" }
 nrf91 = "0.1.1"
 cortex-m = "0.6"
 heapless = "0.5"
