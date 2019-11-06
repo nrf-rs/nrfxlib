@@ -80,7 +80,7 @@ pub enum UseCase {
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct DeleteMask(u32);
 
-/// The specific fields you can enable or disable in an `DeleteMask`.
+/// The specific fields you can enable or disable in a `DeleteMask`.
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(u32)]
 pub enum DeleteField {
