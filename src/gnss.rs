@@ -66,16 +66,6 @@ pub enum NmeaField {
 	RecommendedMinimumSpecificFixData = sys::NRF_GNSS_NMEA_RMC_MASK as u16,
 }
 
-/// A particular use-case the GNSS should optimise for.
-#[derive(Copy, Clone, Eq, PartialEq)]
-#[repr(u8)]
-pub enum UseCase {
-	/// Single cold start performance targeted
-	SingleColdStart = 0,
-	/// Multiple hot start performance targeted
-	MultipleHotStart = 1,
-}
-
 /// Specifies which non-volatile fields you want to delete before starting the GNSS.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct DeleteMask(u32);
@@ -145,15 +135,6 @@ impl GnssSocket {
 	/// Stop the GNSS system.
 	pub fn stop(&self) -> Result<(), Error> {
 		self.0.set_option(SocketOption::GnssStop)?;
-		Ok(())
-	}
-
-	/// Specify which use-case the GNSS sub-system should optimise for.
-	///
-	/// See Nordic for an explanation of this parameter.
-	pub fn set_use_case(&self, use_case: UseCase) -> Result<(), Error> {
-		self.0
-			.set_option(SocketOption::GnssUseCase(use_case as u8))?;
 		Ok(())
 	}
 

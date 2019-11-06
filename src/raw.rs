@@ -48,8 +48,6 @@ pub(crate) enum SocketOption<'a> {
 	GnssFixRetry(u16),
 	/// Controls which, if any, NMEA frames are provided by the GNSS system
 	GnssNmeaMask(u16),
-	/// Optimise the GNSS subsystem for different use-cases.
-	GnssUseCase(u8),
 	/// Starts the GNSS system, after deleting the specified non-volatile values.
 	GnssStart(u32),
 	/// Stops the GNSS system
@@ -246,7 +244,6 @@ impl<'a> SocketOption<'a> {
 			SocketOption::GnssFixInterval(_) => sys::NRF_SOL_GNSS as i32,
 			SocketOption::GnssFixRetry(_) => sys::NRF_SOL_GNSS as i32,
 			SocketOption::GnssNmeaMask(_) => sys::NRF_SOL_GNSS as i32,
-			SocketOption::GnssUseCase(_) => sys::NRF_SOL_GNSS as i32,
 			SocketOption::GnssStart(_) => sys::NRF_SOL_GNSS as i32,
 			SocketOption::GnssStop => sys::NRF_SOL_GNSS as i32,
 		}
@@ -260,7 +257,6 @@ impl<'a> SocketOption<'a> {
 			SocketOption::GnssFixInterval(_) => sys::NRF_SO_GNSS_FIX_INTERVAL as i32,
 			SocketOption::GnssFixRetry(_) => sys::NRF_SO_GNSS_FIX_RETRY as i32,
 			SocketOption::GnssNmeaMask(_) => sys::NRF_SO_GNSS_NMEA_MASK as i32,
-			SocketOption::GnssUseCase(_) => sys::NRF_SO_GNSS_USE_CASE as i32,
 			SocketOption::GnssStart(_) => sys::NRF_SO_GNSS_START as i32,
 			SocketOption::GnssStop => sys::NRF_SO_GNSS_STOP as i32,
 		}
@@ -274,7 +270,6 @@ impl<'a> SocketOption<'a> {
 			SocketOption::GnssFixInterval(x) => x as *const u16 as *const _,
 			SocketOption::GnssFixRetry(x) => x as *const u16 as *const _,
 			SocketOption::GnssNmeaMask(x) => x as *const u16 as *const _,
-			SocketOption::GnssUseCase(x) => x as *const u8 as *const _,
 			SocketOption::GnssStart(x) => x as *const u32 as *const _,
 			SocketOption::GnssStop => core::ptr::null(),
 		}
@@ -288,7 +283,6 @@ impl<'a> SocketOption<'a> {
 			SocketOption::GnssFixInterval(x) => core::mem::size_of_val(x) as u32,
 			SocketOption::GnssFixRetry(x) => core::mem::size_of_val(x) as u32,
 			SocketOption::GnssNmeaMask(x) => core::mem::size_of_val(x) as u32,
-			SocketOption::GnssUseCase(x) => core::mem::size_of_val(x) as u32,
 			SocketOption::GnssStart(x) => core::mem::size_of_val(x) as u32,
 			SocketOption::GnssStop => 0u32,
 		}
