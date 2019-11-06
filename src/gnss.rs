@@ -125,7 +125,8 @@ impl GnssSocket {
 		Ok(GnssSocket(skt))
 	}
 
-	/// Start the GNSS system.
+	/// Deletes the specified information from non-volatile memory, then starts
+	/// the GNSS sub-system.
 	pub fn start(&self, delete_mask: DeleteMask) -> Result<(), Error> {
 		self.0
 			.set_option(SocketOption::GnssStart(delete_mask.as_u32()))?;
@@ -140,7 +141,8 @@ impl GnssSocket {
 
 	/// Set the Fix Interval.
 	///
-	/// See Nordic for an explanation of this parameter.
+	/// Defines the interval between each fix in seconds. The default is 1. A
+	/// value of 0 means single-fix mode.
 	pub fn set_fix_interval(&self, interval: u16) -> Result<(), Error> {
 		self.0.set_option(SocketOption::GnssFixInterval(interval))?;
 		Ok(())
@@ -148,15 +150,16 @@ impl GnssSocket {
 
 	/// Set the Fix Retry time.
 	///
-	/// See Nordic for an explanation of this parameter.
+	/// Defines how long (in seconds) the receiver should try to get a fix. The
+	/// default is 60 seconds and a value of 0 means wait forever.
 	pub fn set_fix_retry(&self, interval: u16) -> Result<(), Error> {
 		self.0.set_option(SocketOption::GnssFixRetry(interval))?;
 		Ok(())
 	}
 
-	/// Get the current Fix Interval.
+	/// Get the current Fix Interval (in seconds).
 	///
-	/// See Nordic for an explanation of this parameter.
+	/// See `set_fix_interval` for more information.
 	pub fn get_fix_interval(&self) -> Result<u16, Error> {
 		let mut length: u32 = core::mem::size_of::<u16>() as u32;
 		let mut value = 0u16;
@@ -176,9 +179,9 @@ impl GnssSocket {
 		}
 	}
 
-	/// Get the Fix Retry time.
+	/// Get the Fix Retry time (in seconds).
 	///
-	/// See Nordic for an explanation of this parameter.
+	/// See `set_fix_retry` for more information.
 	pub fn get_fix_retry(&self) -> Result<u16, Error> {
 		let mut length: u32 = core::mem::size_of::<u16>() as u32;
 		let mut value = 0u16;
@@ -202,8 +205,8 @@ impl GnssSocket {
 	///
 	/// You can select which particular NMEA strings you want from the GNSS socket here.
 	///
-	/// If you pass a default `NmeaMask`, you get no NMEA strings (only
-	/// `GnssData::Position`).
+	/// If you pass a default `NmeaMask`, you get no NMEA frames (only
+	/// `GnssData::Position` or `GnssData::Agps` frames).
 	pub fn set_nmea_mask(&self, mask: NmeaMask) -> Result<(), Error> {
 		self.0
 			.set_option(SocketOption::GnssNmeaMask(mask.as_u16()))?;
@@ -272,6 +275,9 @@ impl GnssSocket {
 	}
 
 	/// Parse the data returned from a GNSS socket read.
+	///
+	/// We get either an NMEA frame, a Position frame, or an AGPS frame. We
+	/// know which we've got based on the `data_id` field.
 	fn process_fix(
 		&self,
 		result: isize,
