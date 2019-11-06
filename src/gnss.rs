@@ -382,11 +382,12 @@ impl core::ops::DerefMut for GnssSocket {
 }
 
 impl GnssData {
-	/// Returns true if this fix is valid (i.e. is an NMEA string or has the valid flag set).
+	/// Returns true if this fix is valid (i.e. is a position frame, AND has the valid flag set).
 	pub fn is_valid(&self) -> bool {
 		match self {
-			GnssData::Nmea { .. } => true,
+			GnssData::Nmea { .. } => false,
 			GnssData::Position(p) => (p.flags & sys::NRF_GNSS_PVT_FLAG_FIX_VALID_BIT as u8) != 0,
+			GnssData::Agps { .. } => false,
 		}
 	}
 }
@@ -402,6 +403,7 @@ impl core::fmt::Debug for GnssData {
 					.finish()
 			}
 			GnssData::Position(p) => fmt.debug_struct("GnssData").field("position", &p).finish(),
+			GnssData::Agps(p) => fmt.debug_struct("GnssData").field("agps", &p).finish(),
 		}
 	}
 }
