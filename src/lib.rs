@@ -51,17 +51,31 @@ pub use ffi::get_last_error;
 
 use nrfxlib_sys as sys;
 
-/// Create a camel-case type name socket addresses.
-pub use sys::nrf_sockaddr_in as NrfSockAddrIn;
-
-/// Create a camel-case type name socket addresses.
-pub use sys::nrf_addrinfo as NrfAddrInfo;
-
 pub use raw::{poll, PollEntry, PollFlags, PollResult, Pollable};
+
+use log::{debug, trace};
 
 //******************************************************************************
 // Types
 //******************************************************************************
+
+/// Create a camel-case type name for socket addresses.
+#[derive(Debug, Clone)]
+#[repr(transparent)]
+pub struct NrfSockAddrIn(sys::nrf_sockaddr_in);
+
+/// Create a camel-case type name for socket information.
+#[derive(Debug, Clone)]
+#[repr(transparent)]
+pub struct NrfAddrInfo(sys::nrf_addrinfo);
+
+impl core::ops::Deref for NrfSockAddrIn {
+	type Target = sys::nrf_sockaddr_in;
+
+	fn deref(&self) -> &sys::nrf_sockaddr_in {
+		&self.0
+	}
+}
 
 /// The set of error codes we can get from this API.
 #[derive(Debug, Clone)]
@@ -107,21 +121,40 @@ pub enum Error {
 
 /// Start the BSD library
 pub fn init() {
+	debug!("nrfxlib init");
 	unsafe {
 		sys::bsd_init();
 	}
+	trace!("nrfxlib init complete");
 }
 
 /// Stop the BSD library
 pub fn shutdown() {
+	debug!("nrfxlib shutdown");
 	unsafe {
 		sys::bsd_shutdown();
 	}
+	trace!("nrfxlib shutdown complete");
 }
 
 impl From<core::fmt::Error> for Error {
 	fn from(_err: core::fmt::Error) -> Error {
 		Error::WriteError
+	}
+}
+
+impl core::fmt::Display for NrfSockAddrIn {
+	fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+		let octets = self.sin_addr.s_addr.to_be_bytes();
+		write!(
+			f,
+			"{}.{}.{}.{}:{}",
+			octets[0],
+			octets[1],
+			octets[2],
+			octets[3],
+			u16::from_be(self.sin_port)
+		)
 	}
 }
 

@@ -18,6 +18,7 @@
 //******************************************************************************
 
 use crate::Error;
+use log::debug;
 
 //******************************************************************************
 // Types
@@ -65,6 +66,7 @@ pub enum SystemMode {
 /// The list of acceptable CEREG response indications is taken from the Nordic
 /// `lte_link_control` driver.
 pub fn wait_for_lte() -> Result<(), Error> {
+	debug!("Waiting for LTE...");
 	let skt = crate::at::AtSocket::new()?;
 	// Subscribe
 	skt.write(b"AT+CEREG=2")?;
@@ -77,6 +79,7 @@ pub fn wait_for_lte() -> Result<(), Error> {
 			let s = unsafe { core::str::from_utf8_unchecked(&buf[0..length - 1]) };
 			for line in s.lines() {
 				let line = line.trim();
+				debug!("RX {:?}", line);
 				for ind in &connected_indications {
 					if line.starts_with(ind) {
 						break 'outer;
@@ -93,18 +96,21 @@ pub fn wait_for_lte() -> Result<(), Error> {
 /// Powers the modem on and sets it to auto-register, but does not wait for it
 /// to connect to a network.
 pub fn on() -> Result<(), Error> {
+	debug!("Turning modem ON");
 	crate::at::send_at_command("AT+CFUN=1", |_| {})?;
 	Ok(())
 }
 
 /// Puts the modem into flight mode.
 pub fn flight_mode() -> Result<(), Error> {
+	debug!("Turning mode to FLIGHT MODE");
 	crate::at::send_at_command("AT+CFUN=4", |_| {})?;
 	Ok(())
 }
 
 /// Powers the modem off.
 pub fn off() -> Result<(), Error> {
+	debug!("Turning modem OFF");
 	crate::at::send_at_command("AT+CFUN=0", |_| {})?;
 	Ok(())
 }
@@ -117,6 +123,7 @@ pub fn off() -> Result<(), Error> {
 /// Works on the nRF9160-DK (PCA10090NS) and Actinius Icarus. Other PCBs may
 /// use different MAGPIO pins to control the GNSS switch.
 pub fn configure_gnss_on_pca10090ns() -> Result<(), Error> {
+	debug!("Configuring XMAGPIO pins for 1574-1577 MHz");
 	// Configure the GNSS antenna. See `nrf/samples/nrf9160/gps/src/main.c`.
 	crate::at::send_at_command("AT%XMAGPIO=1,0,0,1,1,1574,1577", |_| {})?;
 	Ok(())
@@ -131,6 +138,7 @@ pub fn set_system_mode(mode: SystemMode) -> Result<(), Error> {
 		SystemMode::LteMAndGnss => "AT%XSYSTEMMODE=1,0,1,0",
 		SystemMode::NbIotAndGnss => "AT%XSYSTEMMODE=0,1,1,0",
 	};
+	debug!("{:?} => {:?}", mode, at_command);
 	crate::at::send_at_command(at_command, |_| {})?;
 	Ok(())
 }
@@ -151,6 +159,7 @@ pub fn get_system_mode() -> Result<SystemMode, Error> {
 		} else if res.starts_with("%XSYSTEMMODE: 0,1,1,") {
 			result = Ok(SystemMode::NbIotAndGnss);
 		}
+		debug!("{:?} => {:?}", res, result);
 	})?;
 	result
 }
