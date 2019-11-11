@@ -83,6 +83,8 @@ pub(crate) enum SocketProtocol {
 	At,
 	/// Plain TCP socket
 	Tcp,
+	/// Plain UDP socket
+	Udp,
 	/// A TLS v1.2 stream
 	Tls1v2,
 	/// A connection to the GPS/GNSS sub-system
@@ -317,6 +319,7 @@ impl Into<i32> for SocketProtocol {
 		match self {
 			At => sys::NRF_PROTO_AT as i32,
 			Tcp => sys::NRF_IPPROTO_TCP as i32,
+			Udp => sys::NRF_IPPROTO_UDP as i32,
 			Tls1v2 => sys::NRF_SPROTO_TLS1v2 as i32,
 			Gnss => sys::NRF_PROTO_GNSS as i32,
 		}

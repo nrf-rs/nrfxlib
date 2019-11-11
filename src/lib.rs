@@ -41,6 +41,7 @@ pub mod modem;
 mod raw;
 pub mod tcp;
 pub mod tls;
+pub mod udp;
 
 //******************************************************************************
 // Imports
