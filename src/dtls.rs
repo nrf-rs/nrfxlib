@@ -1,6 +1,6 @@
 //! # Raw Sockets for nrfxlib
 //!
-//! Transport Layer Security (TLS, aka SSL) socket related code.
+//! DTLS (encrypted UDP) socket related code.
 //!
 //! Copyright (c) 42 Technology Ltd 2019
 //!
@@ -17,6 +17,8 @@
 // Imports
 //******************************************************************************
 
+pub use crate::tls::provision_certificates;
+
 use super::{get_last_error, Error};
 use crate::raw::*;
 use log::debug;
@@ -26,19 +28,17 @@ use nrfxlib_sys as sys;
 // Types
 //******************************************************************************
 
-/// Represents a connection to a remote TCP/IP device using TLS.
+/// Represents a connection to a remote TCP/IP device using DTLS over UDP.
 #[derive(Debug)]
-pub struct TlsSocket {
+pub struct DtlsSocket {
 	socket: Socket,
 }
 
-/// Specify which version of the TLS standard to use
+/// Specify which version of the DTLS standard to use
 #[derive(Debug, Copy, Clone)]
 pub enum Version {
-	/// TLS v1.2
+	/// DTLS v1.2
 	Tls1v2,
-	/// TLS v1.3
-	Tls1v3,
 }
 
 /// Specify whether to verify the peer
@@ -75,19 +75,18 @@ pub enum PeerVerification {
 // Public Functions and Impl on Public Types
 //******************************************************************************
 
-impl TlsSocket {
+impl DtlsSocket {
 	/// Create a new TLS socket. Only supports TLS v1.2/1.3 and IPv4 at the moment.
 	pub fn new(
 		peer_verify: PeerVerification,
 		security_tags: &[u32],
 		version: Version,
-	) -> Result<TlsSocket, Error> {
-		let nrf_tls_version = match version {
-			Version::Tls1v2 => SocketProtocol::Tls1v2,
-			Version::Tls1v3 => SocketProtocol::Tls1v3,
+	) -> Result<DtlsSocket, Error> {
+		let nrf_dtls_version = match version {
+			Version::Dtls1v2 => SocketProtocol::Dtls1v2,
 		};
 
-		let socket = Socket::new(SocketDomain::Inet, SocketType::Stream, nrf_tls_version)?;
+		let socket = Socket::new(SocketDomain::Inet, SocketType::Datagram, nrf_dtls_version)?;
 
 		// Now configure this socket
 
@@ -106,7 +105,7 @@ impl TlsSocket {
 			socket.set_option(SocketOption::TlsTagList(security_tags))?;
 		}
 
-		Ok(TlsSocket { socket })
+		Ok(DtlsSocket { socket })
 	}
 
 	/// Look up the hostname and for each result returned, try to connect to
@@ -114,7 +113,7 @@ impl TlsSocket {
 	pub fn connect(&self, hostname: &str, port: u16) -> Result<(), Error> {
 		use core::fmt::Write;
 
-		debug!("Connecting via TLS to {}:{}", hostname, port);
+		debug!("Connecting via DTLS to {}:{}", hostname, port);
 
 		// First we set the hostname
 		self.socket
@@ -129,7 +128,7 @@ impl TlsSocket {
 		let hints = sys::nrf_addrinfo {
 			ai_flags: 0,
 			ai_family: sys::NRF_AF_INET as i32,
-			ai_socktype: sys::NRF_SOCK_STREAM as i32,
+			ai_socktype: sys::NRF_SOCK_DGRAM as i32,
 			ai_protocol: 0,
 			ai_addrlen: 0,
 			ai_addr: core::ptr::null_mut(),
@@ -151,7 +150,7 @@ impl TlsSocket {
 		};
 
 		if (result != 0) && output_ptr.is_null() {
-			return Err(Error::Nordic("tls_dns", result, get_last_error()));
+			return Err(Error::Nordic("dtls_dns", result, get_last_error()));
 		} else {
 			let mut record: &sys::nrf_addrinfo = unsafe { &*output_ptr };
 			loop {
@@ -189,27 +188,27 @@ impl TlsSocket {
 			}
 		}
 		if result != 0 {
-			Err(Error::Nordic("tls_connect", result, get_last_error()))
+			Err(Error::Nordic("dtls_connect", result, get_last_error()))
 		} else {
 			Ok(())
 		}
 	}
 }
 
-impl Pollable for TlsSocket {
+impl Pollable for DtlsSocket {
 	/// Get the underlying socket ID for this socket.
 	fn get_fd(&self) -> i32 {
 		self.socket.fd
 	}
 }
 
-impl core::ops::DerefMut for TlsSocket {
+impl core::ops::DerefMut for DtlsSocket {
 	fn deref_mut(&mut self) -> &mut Socket {
 		&mut self.socket
 	}
 }
 
-impl core::ops::Deref for TlsSocket {
+impl core::ops::Deref for DtlsSocket {
 	type Target = Socket;
 	fn deref(&self) -> &Socket {
 		&self.socket
@@ -226,95 +225,6 @@ impl PeerVerification {
 			PeerVerification::Disabled => 0,
 		}
 	}
-}
-
-/// Store SSL certificates in the modem NVRAM for use with a subsequent TLS
-/// connection.
-///
-/// Any existing certificates with the given tag are deleted.
-///
-/// * `tag` - the numeric value used to identify this set of certificates.
-/// * `ca_chain` - Supply a string representing an X509 server side
-///   certificate chain in PEM format, or None.
-/// * `public_cert` - If you want client-side auth, supply an X509 client
-///   certificate in PEM format here, otherwise supply None.
-/// * `key` - If you want client-side auth, supply the private key for the
-///   `public_cert` in PEM format here, otherwise supply None.
-pub fn provision_certificates(
-	tag: u32,
-	ca_chain: Option<&'static str>,
-	public_cert: Option<&'static str>,
-	key: Option<&'static str>,
-) -> Result<(), Error> {
-	// Delete the existing keys
-	for tag_type in &[
-		sys::nrf_key_mgnt_cred_type_t_NRF_KEY_MGMT_CRED_TYPE_CA_CHAIN,
-		sys::nrf_key_mgnt_cred_type_t_NRF_KEY_MGMT_CRED_TYPE_PUBLIC_CERT,
-		sys::nrf_key_mgnt_cred_type_t_NRF_KEY_MGMT_CRED_TYPE_PRIVATE_CERT,
-	] {
-		unsafe {
-			let _res = sys::nrf_inbuilt_key_delete(tag, *tag_type);
-			// Carry on, even if we can't delete.
-		}
-	}
-
-	unsafe {
-		if let Some(ca_chain) = ca_chain {
-			// Store the CA certificate in persistent memory so we can use it later
-			let res = sys::nrf_inbuilt_key_write(
-				// nrf_sec_tag_t            sec_tag,
-				tag,
-				// nrf_key_mgnt_cred_type_t cred_type,
-				sys::nrf_key_mgnt_cred_type_t_NRF_KEY_MGMT_CRED_TYPE_CA_CHAIN,
-				// uint8_t                * p_buffer,
-				// I don't know why the API needs this as mut - const should be fine
-				ca_chain.as_ptr() as *mut u8,
-				// uint16_t                 buffer_len);
-				ca_chain.len() as u16,
-			);
-			if res != 0 {
-				return Err(Error::Nordic("ca_chain write", res, get_last_error()));
-			}
-		}
-		if let Some(public_cert) = public_cert {
-			// Store the client public key certificate in persistent memory so we
-			// can use it later
-			let res = sys::nrf_inbuilt_key_write(
-				// nrf_sec_tag_t            sec_tag,
-				tag,
-				// nrf_key_mgnt_cred_type_t cred_type,
-				sys::nrf_key_mgnt_cred_type_t_NRF_KEY_MGMT_CRED_TYPE_PUBLIC_CERT,
-				// uint8_t                * p_buffer,
-				// I don't know why the API needs this as mut - const should be fine
-				public_cert.as_ptr() as *mut u8,
-				// uint16_t                 buffer_len);
-				public_cert.len() as u16,
-			);
-			if res != 0 {
-				return Err(Error::Nordic("public_cert write", res, get_last_error()));
-			}
-		}
-		if let Some(key) = key {
-			// Store the client private key certificate in persistent memory so we
-			// can use it later
-			let res = sys::nrf_inbuilt_key_write(
-				// nrf_sec_tag_t            sec_tag,
-				tag,
-				// nrf_key_mgnt_cred_type_t cred_type,
-				sys::nrf_key_mgnt_cred_type_t_NRF_KEY_MGMT_CRED_TYPE_PRIVATE_CERT,
-				// uint8_t                * p_buffer,
-				// I don't know why the API needs this as mut - const should be fine
-				key.as_ptr() as *mut u8,
-				// uint16_t                 buffer_len);
-				key.len() as u16,
-			);
-			if res != 0 {
-				return Err(Error::Nordic("private_cert write", res, get_last_error()));
-			}
-		}
-	}
-
-	Ok(())
 }
 
 //******************************************************************************

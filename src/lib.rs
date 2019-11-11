@@ -35,6 +35,7 @@
 
 pub mod api;
 pub mod at;
+pub mod dtls;
 mod ffi;
 pub mod gnss;
 pub mod modem;
@@ -49,12 +50,10 @@ pub mod udp;
 
 pub use api::*;
 pub use ffi::get_last_error;
-
-use nrfxlib_sys as sys;
-
 pub use raw::{poll, PollEntry, PollFlags, PollResult, Pollable};
 
 use log::{debug, trace};
+use nrfxlib_sys as sys;
 
 //******************************************************************************
 // Types
