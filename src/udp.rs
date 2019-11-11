@@ -19,6 +19,7 @@
 
 use super::{get_last_error, Error};
 use crate::raw::*;
+use log::debug;
 use nrfxlib_sys as sys;
 
 //******************************************************************************
@@ -78,6 +79,8 @@ impl UdpSocket {
 	pub fn connect(&self, hostname: &str, port: u16) -> Result<(), Error> {
 		use core::fmt::Write;
 
+		debug!("Connecting via UDP to {}:{}", hostname, port);
+
 		// Now, make a null-terminated hostname
 		let mut hostname_smallstring: heapless::String<heapless::consts::U64> =
 			heapless::String::new();
@@ -118,6 +121,8 @@ impl UdpSocket {
 					sin_port: htons(port),
 					sin_addr: dns_addr.sin_addr.clone(),
 				};
+
+				debug!("Trying IP address {}", &crate::NrfSockAddrIn(connect_addr));
 
 				// try and connect to this result
 				result = unsafe {
