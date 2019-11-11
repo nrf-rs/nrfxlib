@@ -30,7 +30,27 @@ use nrfxlib_sys as sys;
 #[derive(Debug)]
 pub struct TlsSocket {
 	socket: Socket,
-	peer_verify: i32,
+}
+
+/// Specify which version of the TLS standard to use
+#[derive(Debug, Copy, Clone)]
+pub enum Version {
+	/// TLS v1.2
+	Tls1v2,
+	/// TLS v1.3
+	Tls1v3,
+}
+
+/// Specify whether to verify the peer
+#[derive(Debug, Copy, Clone)]
+pub enum PeerVerification {
+	/// Yes - check the peer's certificate is valid and abort if it isn't
+	Enabled,
+	/// Maybe - check the peer's certificate is valid but don't abort if it isn't
+	Optional,
+	/// No - do not validate the peer's certificate. Using this option leaves
+	/// you vulnerable to man-in-the-middle attacks.
+	Disabled,
 }
 
 //******************************************************************************
@@ -56,20 +76,29 @@ pub struct TlsSocket {
 //******************************************************************************
 
 impl TlsSocket {
-	/// Create a new TLS socket. Only supports TLS v1.2 and IPv4 at the moment.
-	pub fn new(peer_verify: bool, security_tags: &[u32]) -> Result<TlsSocket, Error> {
-		let socket = Socket::new(
-			SocketDomain::Inet,
-			SocketType::Stream,
-			SocketProtocol::Tls1v2,
-		)?;
+	/// Create a new TLS socket. Only supports TLS v1.2/1.3 and IPv4 at the moment.
+	pub fn new(
+		peer_verify: PeerVerification,
+		security_tags: &[u32],
+		version: Version,
+	) -> Result<TlsSocket, Error> {
+		let nrf_tls_version = match version {
+			Version::Tls1v2 => SocketProtocol::Tls1v2,
+			Version::Tls1v3 => SocketProtocol::Tls1v3,
+		};
+
+		let socket = Socket::new(SocketDomain::Inet, SocketType::Stream, nrf_tls_version)?;
 
 		// Now configure this socket
 
 		// Set whether we verify the peer
-		socket.set_option(SocketOption::TlsPeerVerify(if peer_verify { 1 } else { 0 }))?;
+		socket.set_option(SocketOption::TlsPeerVerify(peer_verify.as_integer()))?;
 
-		// We skip the cipher list
+		// Always enable session caching to speed up connecting. 0 = enabled, 1
+		// = disabled (the default).
+		socket.set_option(SocketOption::TlsSessionCache(0))?;
+
+		// We don't set the cipher list, and assume the defaults are sensible.
 
 		if !security_tags.is_empty() {
 			// Configure the socket to use the pre-stored certificates. See
@@ -77,10 +106,7 @@ impl TlsSocket {
 			socket.set_option(SocketOption::TlsTagList(security_tags))?;
 		}
 
-		Ok(TlsSocket {
-			socket,
-			peer_verify: if peer_verify { 1 } else { 0 },
-		})
+		Ok(TlsSocket { socket })
 	}
 
 	/// Look up the hostname and for each result returned, try to connect to
@@ -187,6 +213,18 @@ impl core::ops::Deref for TlsSocket {
 	type Target = Socket;
 	fn deref(&self) -> &Socket {
 		&self.socket
+	}
+}
+
+impl PeerVerification {
+	/// The NRF library wants peer verification as a integer, so this function
+	/// converts as per `sys::nrf_sec_peer_verify_t`.
+	fn as_integer(self) -> u32 {
+		match self {
+			PeerVerification::Enabled => 2,
+			PeerVerification::Optional => 1,
+			PeerVerification::Disabled => 0,
+		}
 	}
 }
 

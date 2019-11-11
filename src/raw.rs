@@ -36,8 +36,11 @@ pub struct Socket {
 pub(crate) enum SocketOption<'a> {
 	/// Set the host name for the TLS certificate to match
 	TlsHostName(&'a str),
-	/// 0 implies no peer verification. 1 implies peer verification is optional. 2 implies peer verification is strict (mandatory).
+	/// 0 implies no peer verification. 1 implies peer verification is
+	/// optional. 2 implies peer verification is strict (mandatory).
 	TlsPeerVerify(sys::nrf_sec_peer_verify_t),
+	/// 0 implies no TLS credential caching. 1 implies caching.
+	TlsSessionCache(sys::nrf_sec_session_cache_t),
 	/// A list of the TLS security/key tags you want to use
 	TlsTagList(&'a [sys::nrf_sec_tag_t]),
 	/// Defines the interval between each fix in seconds. The default is 1. A
@@ -87,6 +90,8 @@ pub(crate) enum SocketProtocol {
 	Udp,
 	/// A TLS v1.2 stream
 	Tls1v2,
+	/// A TLS v1.3 stream
+	Tls1v3,
 	/// A connection to the GPS/GNSS sub-system
 	Gnss,
 }
@@ -242,6 +247,7 @@ impl<'a> SocketOption<'a> {
 		match self {
 			SocketOption::TlsHostName(_) => sys::NRF_SOL_SECURE as i32,
 			SocketOption::TlsPeerVerify(_) => sys::NRF_SOL_SECURE as i32,
+			SocketOption::TlsSessionCache(_) => sys::NRF_SOL_SECURE as i32,
 			SocketOption::TlsTagList(_) => sys::NRF_SOL_SECURE as i32,
 			SocketOption::GnssFixInterval(_) => sys::NRF_SOL_GNSS as i32,
 			SocketOption::GnssFixRetry(_) => sys::NRF_SOL_GNSS as i32,
@@ -255,6 +261,7 @@ impl<'a> SocketOption<'a> {
 		match self {
 			SocketOption::TlsHostName(_) => sys::NRF_SO_HOSTNAME as i32,
 			SocketOption::TlsPeerVerify(_) => sys::NRF_SO_SEC_PEER_VERIFY as i32,
+			SocketOption::TlsSessionCache(_) => sys::NRF_SO_SEC_SESSION_CACHE as i32,
 			SocketOption::TlsTagList(_) => sys::NRF_SO_SEC_TAG_LIST as i32,
 			SocketOption::GnssFixInterval(_) => sys::NRF_SO_GNSS_FIX_INTERVAL as i32,
 			SocketOption::GnssFixRetry(_) => sys::NRF_SO_GNSS_FIX_RETRY as i32,
@@ -268,6 +275,7 @@ impl<'a> SocketOption<'a> {
 		match self {
 			SocketOption::TlsHostName(s) => s.as_ptr() as *const sys::ctypes::c_void,
 			SocketOption::TlsPeerVerify(x) => x as *const _ as *const sys::ctypes::c_void,
+			SocketOption::TlsSessionCache(x) => x as *const _ as *const sys::ctypes::c_void,
 			SocketOption::TlsTagList(x) => x.as_ptr() as *const sys::ctypes::c_void,
 			SocketOption::GnssFixInterval(x) => x as *const _ as *const sys::ctypes::c_void,
 			SocketOption::GnssFixRetry(x) => x as *const _ as *const sys::ctypes::c_void,
@@ -281,6 +289,7 @@ impl<'a> SocketOption<'a> {
 		match self {
 			SocketOption::TlsHostName(s) => s.len() as u32,
 			SocketOption::TlsPeerVerify(x) => core::mem::size_of_val(x) as u32,
+			SocketOption::TlsSessionCache(x) => core::mem::size_of_val(x) as u32,
 			SocketOption::TlsTagList(x) => core::mem::size_of_val(x) as u32,
 			SocketOption::GnssFixInterval(x) => core::mem::size_of_val(x) as u32,
 			SocketOption::GnssFixRetry(x) => core::mem::size_of_val(x) as u32,
@@ -321,6 +330,7 @@ impl Into<i32> for SocketProtocol {
 			Tcp => sys::NRF_IPPROTO_TCP as i32,
 			Udp => sys::NRF_IPPROTO_UDP as i32,
 			Tls1v2 => sys::NRF_SPROTO_TLS1v2 as i32,
+			Tls1v3 => sys::NRF_SPROTO_TLS1v3 as i32,
 			Gnss => sys::NRF_PROTO_GNSS as i32,
 		}
 	}
