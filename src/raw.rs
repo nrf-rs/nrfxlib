@@ -84,14 +84,16 @@ pub(crate) enum SocketType {
 pub(crate) enum SocketProtocol {
 	/// Used with `SocketDomain::Lte`
 	At,
-	/// Plain TCP socket
+	/// Plain TCP stream socket
 	Tcp,
-	/// Plain UDP socket
+	/// Plain UDP datagram socket
 	Udp,
-	/// A TLS v1.2 stream
+	/// A TLS v1.2 over TCP stream socket
 	Tls1v2,
-	/// A TLS v1.3 stream
+	/// A TLS v1.3 over TCP stream socket
 	Tls1v3,
+	/// A DTLS v1.2 over UDP datagram socket
+	Dtls1v2,
 	/// A connection to the GPS/GNSS sub-system
 	Gnss,
 }
@@ -331,6 +333,7 @@ impl Into<i32> for SocketProtocol {
 			Udp => sys::NRF_IPPROTO_UDP as i32,
 			Tls1v2 => sys::NRF_SPROTO_TLS1v2 as i32,
 			Tls1v3 => sys::NRF_SPROTO_TLS1v3 as i32,
+			Dtls1v2 => sys::NRF_SPROTO_DTLS1v2 as i32,
 			Gnss => sys::NRF_PROTO_GNSS as i32,
 		}
 	}

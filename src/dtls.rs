@@ -38,7 +38,7 @@ pub struct DtlsSocket {
 #[derive(Debug, Copy, Clone)]
 pub enum Version {
 	/// DTLS v1.2
-	Tls1v2,
+	Dtls1v2,
 }
 
 /// Specify whether to verify the peer
