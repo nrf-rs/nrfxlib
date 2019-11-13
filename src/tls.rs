@@ -13,6 +13,7 @@
 
 use super::{get_last_error, Error};
 use crate::raw::*;
+use log::debug;
 use nrfxlib_sys as sys;
 
 //******************************************************************************
@@ -87,6 +88,8 @@ impl TlsSocket {
 	pub fn connect(&self, hostname: &str, port: u16) -> Result<(), Error> {
 		use core::fmt::Write;
 
+		debug!("Connecting via TLS to {}:{}", hostname, port);
+
 		// First we set the hostname
 		self.socket
 			.set_option(SocketOption::TlsHostName(hostname))?;
@@ -97,7 +100,7 @@ impl TlsSocket {
 			heapless::String::new();
 		write!(hostname_smallstring, "{}\0", hostname).map_err(|_| Error::HostnameTooLong)?;
 		// Now call getaddrinfo with some hints
-		let hints = crate::NrfAddrInfo {
+		let hints = sys::nrf_addrinfo {
 			ai_flags: 0,
 			ai_family: sys::NRF_AF_INET as i32,
 			ai_socktype: sys::NRF_SOCK_STREAM as i32,
@@ -107,7 +110,7 @@ impl TlsSocket {
 			ai_canonname: core::ptr::null_mut(),
 			ai_next: core::ptr::null_mut(),
 		};
-		let mut output_ptr: *mut crate::NrfAddrInfo = core::ptr::null_mut();
+		let mut output_ptr: *mut sys::nrf_addrinfo = core::ptr::null_mut();
 		result = unsafe {
 			sys::nrf_getaddrinfo(
 				// hostname
@@ -124,23 +127,25 @@ impl TlsSocket {
 		if (result != 0) && output_ptr.is_null() {
 			return Err(Error::Nordic("tls_dns", result, get_last_error()));
 		} else {
-			let mut record: &crate::NrfAddrInfo = unsafe { &*output_ptr };
+			let mut record: &sys::nrf_addrinfo = unsafe { &*output_ptr };
 			loop {
-				let dns_addr: &crate::NrfSockAddrIn =
-					unsafe { &*(record.ai_addr as *const crate::NrfSockAddrIn) };
+				let dns_addr: &sys::nrf_sockaddr_in =
+					unsafe { &*(record.ai_addr as *const sys::nrf_sockaddr_in) };
 				// Create a new sockaddr_in with the right port
-				let connect_addr = crate::NrfSockAddrIn {
-					sin_len: core::mem::size_of::<crate::NrfSockAddrIn>() as u8,
+				let connect_addr = sys::nrf_sockaddr_in {
+					sin_len: core::mem::size_of::<sys::nrf_sockaddr_in>() as u8,
 					sin_family: sys::NRF_AF_INET as i32,
 					sin_port: htons(port),
 					sin_addr: dns_addr.sin_addr.clone(),
 				};
 
+				debug!("Trying IP address {}", &crate::NrfSockAddrIn(connect_addr));
+
 				// try and connect to this result
 				result = unsafe {
 					sys::nrf_connect(
 						self.socket.fd,
-						&connect_addr as *const crate::NrfSockAddrIn as *const _,
+						&connect_addr as *const sys::nrf_sockaddr_in as *const _,
 						connect_addr.sin_len as u32,
 					)
 				};
