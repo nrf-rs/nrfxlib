@@ -1,4 +1,4 @@
-//! # Raw Sockets for nrfxlib
+//! # DTLS Sockets for nrfxlib
 //!
 //! DTLS (encrypted UDP) socket related code.
 //!
