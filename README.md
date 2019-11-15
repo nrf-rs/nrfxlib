@@ -74,9 +74,13 @@ See [nrf9160-demo](https://github.com/42-technology-ltd/nrf9160-demo) for a demo
 
 ## Changelog
 
-### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.3.0...master))
+### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.4.0...master))
 
 * None
+
+### v0.4.0 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.4.0) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.3.0...v0.4.0))
+
+* Add TLS v1.3 and DTLS v1.2 support
 
 ### v0.3.0 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.3.0) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.2.2...v0.3.0))
 
