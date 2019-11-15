@@ -1,6 +1,9 @@
 //! # GNSS Module for nrfxlib
 //!
-//! GNSS related socket code.
+//! Global Navigation Satellite System (GNSS) related socket code.
+//!
+//! Currently only GPS is supported by the nRF9160 modem firmware, but they
+//! could add GLONASS, Galileo and Beidou in the future.
 //!
 //! Copyright (c) 42 Technology Ltd 2019
 //!
