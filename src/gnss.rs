@@ -250,7 +250,7 @@ impl GnssSocket {
 			sys::nrf_recv(
 				self.0.fd,
 				frame.as_mut_ptr() as *mut sys::ctypes::c_void,
-				buffer_size,
+				buffer_size as u32,
 				sys::NRF_MSG_DONTWAIT as i32,
 			)
 		};
@@ -270,7 +270,7 @@ impl GnssSocket {
 			sys::nrf_recv(
 				self.0.fd,
 				frame.as_mut_ptr() as *mut sys::ctypes::c_void,
-				buffer_size,
+				buffer_size as u32,
 				0,
 			)
 		};
@@ -283,7 +283,7 @@ impl GnssSocket {
 	/// know which we've got based on the `data_id` field.
 	fn process_fix(
 		&self,
-		result: isize,
+		result: i32,
 		frame: core::mem::MaybeUninit<sys::nrf_gnss_data_frame_t>,
 	) -> Result<Option<GnssData>, Error> {
 		match result {
