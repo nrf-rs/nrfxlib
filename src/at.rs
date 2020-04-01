@@ -18,8 +18,7 @@
 // Imports
 //******************************************************************************
 
-use super::Error;
-use crate::raw::*;
+use crate::{raw::*, AtError, Error};
 
 //******************************************************************************
 // Types
@@ -62,6 +61,60 @@ impl AtSocket {
 	pub fn send_command(&self, command: &str) -> Result<(), Error> {
 		self.0.write(command.as_bytes()).map(|_count| ())
 	}
+
+	/// Read from the AT socket until we get something that indicates the command has completed.
+	///
+	/// Commands are completed by `OK`, `ERROR`, `+CME ERROR:xxx` or `+CMS
+	/// ERROR:xxx`. These are mapped to a Rust `Result` type.
+	///
+	/// Any other data received is deemed to be a command result and passed to the given fn `callback_function`.
+	pub fn poll_response<F>(&mut self, mut callback_function: F) -> Result<(), Error>
+	where
+		F: FnMut(&str),
+	{
+		let result;
+		'outer: loop {
+			let mut buf = [0u8; 256];
+			let length = 'inner: loop {
+				match self.recv(&mut buf)? {
+					None => {
+						// EAGAIN
+					}
+					Some(n) => break 'inner n,
+				};
+			};
+			let s = unsafe { core::str::from_utf8_unchecked(&buf[0..length - 1]) };
+			for line in s.lines() {
+				let line = line.trim();
+				match line {
+					"OK" => {
+						result = Ok(());
+						break 'outer;
+					}
+					"ERROR" => {
+						result = Err(Error::AtError(AtError::Error));
+						break 'outer;
+					}
+					err if err.starts_with("+CME ERROR:") => {
+						let num_str = &err[11..];
+						let value = num_str.trim().parse().unwrap_or(-1);
+						result = Err(Error::AtError(AtError::CmeError(value)));
+						break 'outer;
+					}
+					err if err.starts_with("+CMS ERROR:") => {
+						let num_str = &err[11..];
+						let value = num_str.trim().parse().unwrap_or(-1);
+						result = Err(Error::AtError(AtError::CmsError(value)));
+						break 'outer;
+					}
+					data => {
+						callback_function(data);
+					}
+				}
+			}
+		}
+		result
+	}
 }
 
 impl Pollable for AtSocket {
@@ -89,47 +142,13 @@ impl core::ops::Deref for AtSocket {
 ///
 /// Creates and destroys a new NRF_AF_LTE/NRF_PROTO_AT socket. Will block
 /// until we get 'OK' or some sort of error response from the modem.
-pub fn send_at_command<F>(command: &str, mut function: F) -> Result<(), Error>
+pub fn send_at_command<F>(command: &str, function: F) -> Result<(), Error>
 where
 	F: FnMut(&str),
 {
-	let skt = AtSocket::new()?;
+	let mut skt = AtSocket::new()?;
 	skt.send_command(command)?;
-	let result;
-	'outer: loop {
-		let mut buf = [0u8; 256];
-		let length = 'inner: loop {
-			match skt.recv(&mut buf) {
-				Ok(None) => {
-					// EAGAIN
-				}
-				Err(e) => {
-					return Err(e);
-				}
-				Ok(Some(n)) => break 'inner n,
-			};
-		};
-		let s = unsafe { core::str::from_utf8_unchecked(&buf[0..length - 1]) };
-		for line in s.lines() {
-			let line = line.trim();
-			if line == "OK" {
-				// This is our final response
-				result = Ok(());
-				break 'outer;
-			} else if line == "ERROR"
-				|| line.starts_with("+CME ERROR")
-				|| line.starts_with("+CMS ERROR")
-			{
-				// We think this is our final response
-				result = Err(Error::AtError);
-				break 'outer;
-			} else {
-				// Assume it's an indication
-				function(line);
-			}
-		}
-	}
-	result
+	skt.poll_response(function)
 }
 
 //******************************************************************************
