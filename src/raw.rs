@@ -186,7 +186,7 @@ impl Socket {
 	pub fn write(&self, buf: &[u8]) -> Result<usize, Error> {
 		let length = buf.len();
 		let ptr = buf.as_ptr();
-		let result = unsafe { sys::nrf_write(self.fd, ptr as *const _, length) };
+		let result = unsafe { sys::nrf_write(self.fd, ptr as *const _, length as u32) };
 		if result < 0 {
 			Err(Error::Nordic("write", result as i32, get_last_error()))
 		} else {
@@ -200,8 +200,14 @@ impl Socket {
 	pub fn recv(&self, buf: &mut [u8]) -> Result<Option<usize>, Error> {
 		let length = buf.len();
 		let ptr = buf.as_mut_ptr();
-		let result =
-			unsafe { sys::nrf_recv(self.fd, ptr as *mut _, length, sys::NRF_MSG_DONTWAIT as i32) };
+		let result = unsafe {
+			sys::nrf_recv(
+				self.fd,
+				ptr as *mut _,
+				length as u32,
+				sys::NRF_MSG_DONTWAIT as i32,
+			)
+		};
 		if result == -1 && get_last_error() == sys::NRF_EAGAIN as i32 {
 			// This is EAGAIN
 			Ok(None)
@@ -218,7 +224,7 @@ impl Socket {
 	pub fn recv_wait(&self, buf: &mut [u8]) -> Result<usize, Error> {
 		let length = buf.len();
 		let ptr = buf.as_mut_ptr();
-		let result = unsafe { sys::nrf_recv(self.fd, ptr as *mut _, length, 0) };
+		let result = unsafe { sys::nrf_recv(self.fd, ptr as *mut _, length as u32, 0) };
 		if result < 0 {
 			Err(Error::Nordic("recv_wait", result as i32, get_last_error()))
 		} else {

@@ -17,8 +17,9 @@
 // Imports
 //******************************************************************************
 
-use super::{get_last_error, Error};
+use super::{get_last_error, AtError, Error};
 use crate::raw::*;
+use core::fmt::Write;
 use log::debug;
 use nrfxlib_sys as sys;
 
@@ -51,6 +52,19 @@ pub enum PeerVerification {
 	/// No - do not validate the peer's certificate. Using this option leaves
 	/// you vulnerable to man-in-the-middle attacks.
 	Disabled,
+}
+
+#[derive(Debug, Copy, Clone)]
+enum CredentialType {
+	RootCA = 0,
+	ClientCert = 1,
+	ClientPrivate = 2,
+}
+
+#[derive(Debug, Copy, Clone)]
+enum CredentialOpcode {
+	Write = 0,
+	Delete = 3,
 }
 
 //******************************************************************************
@@ -112,8 +126,6 @@ impl TlsSocket {
 	/// Look up the hostname and for each result returned, try to connect to
 	/// it.
 	pub fn connect(&self, hostname: &str, port: u16) -> Result<(), Error> {
-		use core::fmt::Write;
-
 		debug!("Connecting via TLS to {}:{}", hostname, port);
 
 		// First we set the hostname
@@ -246,75 +258,54 @@ pub fn provision_certificates(
 	public_cert: Option<&'static str>,
 	key: Option<&'static str>,
 ) -> Result<(), Error> {
-	// Delete the existing keys
-	for tag_type in &[
-		sys::nrf_key_mgnt_cred_type_t_NRF_KEY_MGMT_CRED_TYPE_CA_CHAIN,
-		sys::nrf_key_mgnt_cred_type_t_NRF_KEY_MGMT_CRED_TYPE_PUBLIC_CERT,
-		sys::nrf_key_mgnt_cred_type_t_NRF_KEY_MGMT_CRED_TYPE_PRIVATE_CERT,
+	let mut at_socket = crate::at::AtSocket::new()?;
+	for (key, var) in &[
+		(CredentialType::RootCA, ca_chain),
+		(CredentialType::ClientCert, public_cert),
+		(CredentialType::ClientPrivate, key),
 	] {
-		unsafe {
-			let _res = sys::nrf_inbuilt_key_delete(tag, *tag_type);
-			// Carry on, even if we can't delete.
-		}
-	}
-
-	unsafe {
-		if let Some(ca_chain) = ca_chain {
-			// Store the CA certificate in persistent memory so we can use it later
-			let res = sys::nrf_inbuilt_key_write(
-				// nrf_sec_tag_t            sec_tag,
-				tag,
-				// nrf_key_mgnt_cred_type_t cred_type,
-				sys::nrf_key_mgnt_cred_type_t_NRF_KEY_MGMT_CRED_TYPE_CA_CHAIN,
-				// uint8_t                * p_buffer,
-				// I don't know why the API needs this as mut - const should be fine
-				ca_chain.as_ptr() as *mut u8,
-				// uint16_t                 buffer_len);
-				ca_chain.len() as u16,
-			);
-			if res != 0 {
-				return Err(Error::Nordic("ca_chain write", res, get_last_error()));
+		write!(
+			at_socket,
+			"AT%CMNG={},{},{}\r\n",
+			CredentialOpcode::Delete,
+			tag,
+			key
+		)?;
+		match at_socket.poll_response(|_| {}) {
+			Ok(_) => {}
+			Err(Error::AtError(AtError::CmeError(513))) => {
+				// 513 is NOT FOUND. We can ignore this
+			}
+			Err(e) => {
+				return Err(e);
 			}
 		}
-		if let Some(public_cert) = public_cert {
-			// Store the client public key certificate in persistent memory so we
-			// can use it later
-			let res = sys::nrf_inbuilt_key_write(
-				// nrf_sec_tag_t            sec_tag,
+		if let Some(string) = var {
+			write!(
+				at_socket,
+				"AT%CMNG={},{},{},\"{}\"\r\n",
+				CredentialOpcode::Write,
 				tag,
-				// nrf_key_mgnt_cred_type_t cred_type,
-				sys::nrf_key_mgnt_cred_type_t_NRF_KEY_MGMT_CRED_TYPE_PUBLIC_CERT,
-				// uint8_t                * p_buffer,
-				// I don't know why the API needs this as mut - const should be fine
-				public_cert.as_ptr() as *mut u8,
-				// uint16_t                 buffer_len);
-				public_cert.len() as u16,
-			);
-			if res != 0 {
-				return Err(Error::Nordic("public_cert write", res, get_last_error()));
-			}
-		}
-		if let Some(key) = key {
-			// Store the client private key certificate in persistent memory so we
-			// can use it later
-			let res = sys::nrf_inbuilt_key_write(
-				// nrf_sec_tag_t            sec_tag,
-				tag,
-				// nrf_key_mgnt_cred_type_t cred_type,
-				sys::nrf_key_mgnt_cred_type_t_NRF_KEY_MGMT_CRED_TYPE_PRIVATE_CERT,
-				// uint8_t                * p_buffer,
-				// I don't know why the API needs this as mut - const should be fine
-				key.as_ptr() as *mut u8,
-				// uint16_t                 buffer_len);
-				key.len() as u16,
-			);
-			if res != 0 {
-				return Err(Error::Nordic("private_cert write", res, get_last_error()));
-			}
+				key,
+				string
+			)?;
+			at_socket.poll_response(|_| {})?;
 		}
 	}
 
 	Ok(())
+}
+
+impl core::fmt::Display for CredentialOpcode {
+	fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+		write!(f, "{}", *self as i32)
+	}
+}
+
+impl core::fmt::Display for CredentialType {
+	fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+		write!(f, "{}", *self as i32)
+	}
 }
 
 //******************************************************************************

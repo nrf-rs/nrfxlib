@@ -77,6 +77,17 @@ impl core::ops::Deref for NrfSockAddrIn {
 	}
 }
 
+/// Errors that can be returned in response to an AT command.
+#[derive(Debug, Clone)]
+pub enum AtError {
+	/// Plain `ERROR` response
+	Error,
+	/// `+CME ERROR xx` response
+	CmeError(i32),
+	/// `+CMS ERROR xx` response
+	CmsError(i32),
+}
+
 /// The set of error codes we can get from this API.
 #[derive(Debug, Clone)]
 pub enum Error {
@@ -84,7 +95,7 @@ pub enum Error {
 	/// descriptor, the return code, and the value of `errno`.
 	Nordic(&'static str, i32, i32),
 	/// An AT error (`ERROR`, `+CMS ERROR` or `+CME ERROR`) was returned by the modem.
-	AtError,
+	AtError(AtError),
 	/// Data returned by the modem was not in a format we could understand.
 	BadDataFormat,
 	/// Given hostname was too long for internal buffers to hold
