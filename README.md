@@ -74,9 +74,14 @@ See [nrf9160-demo](https://github.com/42-technology-ltd/nrf9160-demo) for a demo
 
 ## Changelog
 
-### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.4.0...master))
+### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.5.0...master))
 
 * None
+
+### v0.5.0 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.5.0) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.4.0...v0.5.0))
+
+* Updated to nrfxlib version 1.2.0
+* Certificates now handled through AT commands.
 
 ### v0.4.0 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.4.0) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.3.0...v0.4.0))
 
