@@ -54,6 +54,7 @@ pub use raw::{poll, PollEntry, PollFlags, PollResult, Pollable};
 
 use log::{debug, trace};
 use nrfxlib_sys as sys;
+use nrf9160_pac as cpu;
 
 //******************************************************************************
 // Types

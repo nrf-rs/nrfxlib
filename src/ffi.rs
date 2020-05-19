@@ -8,8 +8,6 @@
 //! Dual-licensed under MIT and Apache 2.0. See the [README](../README.md) for
 //! more details.
 
-use nrf91;
-
 /// Stores the last error from the library. See `bsd_os_errno_set` and
 /// `get_last_error`.
 static LAST_ERROR: core::sync::atomic::AtomicI32 = core::sync::atomic::AtomicI32::new(0);
@@ -23,25 +21,25 @@ extern "C" {
 /// Function required by BSD library. We need to set the EGU1 interrupt.
 #[no_mangle]
 pub extern "C" fn bsd_os_application_irq_set() {
-	cortex_m::peripheral::NVIC::pend(nrf91::Interrupt::EGU1);
+	cortex_m::peripheral::NVIC::pend(crate::cpu::Interrupt::EGU1);
 }
 
 /// Function required by BSD library. We need to clear the EGU1 interrupt.
 #[no_mangle]
 pub extern "C" fn bsd_os_application_irq_clear() {
-	cortex_m::peripheral::NVIC::unpend(nrf91::Interrupt::EGU1);
+	cortex_m::peripheral::NVIC::unpend(crate::cpu::Interrupt::EGU1);
 }
 
 /// Function required by BSD library. We need to set the EGU2 interrupt.
 #[no_mangle]
 pub extern "C" fn bsd_os_trace_irq_set() {
-	cortex_m::peripheral::NVIC::pend(nrf91::Interrupt::EGU2);
+	cortex_m::peripheral::NVIC::pend(crate::cpu::Interrupt::EGU2);
 }
 
 /// Function required by BSD library. We need to clear the EGU2 interrupt.
 #[no_mangle]
 pub extern "C" fn bsd_os_trace_irq_clear() {
-	cortex_m::peripheral::NVIC::unpend(nrf91::Interrupt::EGU2);
+	cortex_m::peripheral::NVIC::unpend(crate::cpu::Interrupt::EGU2);
 }
 
 /// Function required by BSD library. We have no init to do.
