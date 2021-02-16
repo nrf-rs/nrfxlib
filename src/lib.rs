@@ -177,10 +177,10 @@ impl core::fmt::Display for NrfSockAddrIn {
 		write!(
 			f,
 			"{}.{}.{}.{}:{}",
-			octets[0],
-			octets[1],
-			octets[2],
 			octets[3],
+			octets[2],
+			octets[1],
+			octets[0],
 			u16::from_be(self.sin_port)
 		)
 	}
