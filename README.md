@@ -76,7 +76,7 @@ See [nrf9160-demo](https://github.com/42-technology-ltd/nrf9160-demo) for a demo
 
 ### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.5.0...master))
 
-* None
+* Updated to nrfxlib version 1.4.2. This requires Rust v1.51 as we use the new resolver to allow bindgen as a build-dep.
 
 ### v0.5.0 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.5.0) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.4.0...v0.5.0))
 

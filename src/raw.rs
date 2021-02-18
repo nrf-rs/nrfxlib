@@ -71,8 +71,6 @@ pub(crate) enum SocketDomain {
 /// The type of socket (Stream, Datagram, or neither)
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub(crate) enum SocketType {
-	/// Used with `SocketDomain::Lte`
-	None,
 	/// Used with `SocketDomain::Inet` for TCP and TLS streams
 	Stream,
 	/// Used with UDP sockets, and for GPS
@@ -323,7 +321,6 @@ impl Into<i32> for SocketType {
 	fn into(self) -> i32 {
 		use SocketType::*;
 		match self {
-			None => 0,
 			Stream => sys::NRF_SOCK_STREAM as i32,
 			Datagram => sys::NRF_SOCK_DGRAM as i32,
 		}
@@ -434,14 +431,14 @@ pub fn poll(poll_list: &mut [PollEntry], timeout_ms: u16) -> Result<i32, Error> 
 	}
 
 	let mut poll_fds: [sys::nrf_pollfd; MAX_SOCKETS_POLL] = [sys::nrf_pollfd {
-		handle: 0,
-		requested: 0,
-		returned: 0,
+		fd: 0,
+		events: 0,
+		revents: 0,
 	}; MAX_SOCKETS_POLL];
 
 	for (poll_entry, pollfd) in poll_list.iter_mut().zip(poll_fds.iter_mut()) {
-		pollfd.handle = poll_entry.socket.get_fd();
-		pollfd.requested = poll_entry.flags as i16;
+		pollfd.fd = poll_entry.socket.get_fd();
+		pollfd.events = poll_entry.flags as i16;
 		count += 1;
 	}
 
@@ -452,7 +449,7 @@ pub fn poll(poll_list: &mut [PollEntry], timeout_ms: u16) -> Result<i32, Error> 
 		0 => Ok(0),
 		n => {
 			for (poll_entry, pollfd) in poll_list.iter_mut().zip(poll_fds.iter()) {
-				poll_entry.result = PollResult(pollfd.returned as u32);
+				poll_entry.result = PollResult(pollfd.revents as u32);
 			}
 			Ok(n)
 		}

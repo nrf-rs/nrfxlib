@@ -53,7 +53,7 @@ pub struct AtSocket(Socket);
 impl AtSocket {
 	/// Create a new AT socket.
 	pub fn new() -> Result<AtSocket, Error> {
-		let skt = Socket::new(SocketDomain::Lte, SocketType::None, SocketProtocol::At)?;
+		let skt = Socket::new(SocketDomain::Lte, SocketType::Datagram, SocketProtocol::At)?;
 		Ok(AtSocket(skt))
 	}
 

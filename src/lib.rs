@@ -53,8 +53,8 @@ pub use ffi::get_last_error;
 pub use raw::{poll, PollEntry, PollFlags, PollResult, Pollable};
 
 use log::{debug, trace};
-use nrfxlib_sys as sys;
 use nrf9160_pac as cpu;
+use nrfxlib_sys as sys;
 
 //******************************************************************************
 // Types
@@ -132,12 +132,28 @@ pub enum Error {
 //******************************************************************************
 
 /// Start the BSD library
-pub fn init() {
+pub fn init(trace_on: bool) -> Result<(), Error> {
 	debug!("nrfxlib init");
-	unsafe {
-		sys::bsd_init();
+	let bsd_memory_size = if trace_on {
+		sys::BSD_RESERVED_MEMORY_SIZE
+	} else {
+		sys::BSD_RESERVED_MEMORY_SIZE_TRACE_DISABLED
+	};
+
+	let result = unsafe {
+		sys::bsd_init(&sys::bsd_init_params_t {
+			trace_on,
+			bsd_memory_address: sys::BSD_RESERVED_MEMORY_ADDRESS,
+			bsd_memory_size,
+		})
+	};
+
+	if result < 0 {
+		Err(Error::Nordic("init", result, ffi::get_last_error()))
+	} else {
+		trace!("nrfxlib init complete");
+		Ok(())
 	}
-	trace!("nrfxlib init complete");
 }
 
 /// Stop the BSD library
@@ -161,10 +177,10 @@ impl core::fmt::Display for NrfSockAddrIn {
 		write!(
 			f,
 			"{}.{}.{}.{}:{}",
-			octets[0],
-			octets[1],
-			octets[2],
 			octets[3],
+			octets[2],
+			octets[1],
+			octets[0],
 			u16::from_be(self.sin_port)
 		)
 	}
