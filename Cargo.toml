@@ -13,7 +13,4 @@ nrf9160-pac = "0.2.1"
 cortex-m = "0.6"
 heapless = "0.5"
 log = "0.4"
-
-# Note: when v1.4.2 is upstreamed we can merge this again.
-# nrfxlib-sys = "1.2.0"
-nrfxlib-sys = { git = "https://github.com/Wassasin/nrfxlib-sys", branch = "nrfxlib-v1.4.2" }
+nrfxlib-sys = "1.4.2"
