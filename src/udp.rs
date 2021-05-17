@@ -82,8 +82,7 @@ impl UdpSocket {
 		debug!("Connecting via UDP to {}:{}", hostname, port);
 
 		// Now, make a null-terminated hostname
-		let mut hostname_smallstring: heapless::String<heapless::consts::U64> =
-			heapless::String::new();
+		let mut hostname_smallstring: heapless::String<64> = heapless::String::new();
 		write!(hostname_smallstring, "{}\0", hostname).map_err(|_| Error::HostnameTooLong)?;
 		// Now call getaddrinfo with some hints
 		let hints = sys::nrf_addrinfo {
