@@ -60,8 +60,7 @@ pub enum NrfxErr {
 	ErrorAlreadyInitialized = (0x0BAD0000 + 12),
 }
 
-/// st error from the library. See `bsd_os_errno_set` and
-/// Stores the l
+/// Stores the last error from the library. See `nrf_modem_os_errno_set` and
 /// `get_last_error`.
 static LAST_ERROR: core::sync::atomic::AtomicI32 = core::sync::atomic::AtomicI32::new(0);
 
