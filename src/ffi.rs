@@ -146,21 +146,25 @@ pub extern "C" fn nrf_modem_irrecoverable_error_handler(err: u32) -> ! {
 /// can be located anywhere in the application core's RAM instead of the shared
 /// memory regions. This function allocates dynamic memory for the library.
 #[no_mangle]
-pub extern "C" fn nrf_modem_os_alloc(num_bytes: usize) -> *mut u8 {
-	debug!("nrf_modem_os_alloc({})", num_bytes);
+pub extern "C" fn nrf_modem_os_alloc(num_bytes_requested: usize) -> *mut u8 {
 	let usize_size = core::mem::size_of::<usize>();
 	let mut result = core::ptr::null_mut();
 	unsafe {
 		cortex_m::interrupt::free(|cs| {
+			let num_bytes_allocated = num_bytes_requested + usize_size;
 			let layout =
-				core::alloc::Layout::from_size_align_unchecked(num_bytes + usize_size, usize_size);
+				core::alloc::Layout::from_size_align_unchecked(num_bytes_allocated, usize_size);
 			if let Some(ref mut allocator) = *crate::GENERIC_ALLOCATOR.borrow(cs).borrow_mut() {
 				match allocator.allocate_first_fit(layout) {
-					Ok(block) => {
+					Ok(real_block) => {
+						let real_ptr = real_block.as_ptr();
 						// We need the block size to run the de-allocation. Store it in the first four bytes.
-						core::ptr::write_volatile::<usize>(block.as_ptr() as *mut usize, num_bytes);
+						core::ptr::write_volatile::<usize>(
+							real_ptr as *mut usize,
+							num_bytes_allocated,
+						);
 						// Give them the rest of the block
-						result = block.as_ptr().offset(usize_size as isize);
+						result = real_ptr.offset(usize_size as isize);
 					}
 					Err(_e) => {
 						// Ignore
@@ -180,17 +184,18 @@ pub extern "C" fn nrf_modem_os_alloc(num_bytes: usize) -> *mut u8 {
 /// memory regions. This function allocates dynamic memory for the library.
 #[no_mangle]
 pub extern "C" fn nrf_modem_os_free(ptr: *mut u8) {
-	debug!("nrf_modem_os_free({:?})", ptr);
 	let usize_size = core::mem::size_of::<usize>() as isize;
 	unsafe {
 		cortex_m::interrupt::free(|cs| {
 			// Fetch the size from the previous four bytes
 			let real_ptr = ptr.offset(-usize_size);
-			let num_bytes = core::ptr::read_volatile::<usize>(real_ptr as *const usize);
-			let layout =
-				core::alloc::Layout::from_size_align_unchecked(num_bytes, usize_size as usize);
+			let num_bytes_allocated = core::ptr::read_volatile::<usize>(real_ptr as *const usize);
+			let layout = core::alloc::Layout::from_size_align_unchecked(
+				num_bytes_allocated,
+				usize_size as usize,
+			);
 			if let Some(ref mut allocator) = *crate::GENERIC_ALLOCATOR.borrow(cs).borrow_mut() {
-				allocator.deallocate(core::ptr::NonNull::new_unchecked(ptr), layout);
+				allocator.deallocate(core::ptr::NonNull::new_unchecked(real_ptr), layout);
 			}
 		});
 	}
@@ -201,21 +206,25 @@ pub extern "C" fn nrf_modem_os_free(ptr: *mut u8) {
 /// @param bytes Buffer size.
 /// @return pointer to allocated memory
 #[no_mangle]
-pub extern "C" fn nrf_modem_os_shm_tx_alloc(num_bytes: usize) -> *mut u8 {
-	debug!("nrf_modem_os_shm_tx_alloc({})", num_bytes);
+pub extern "C" fn nrf_modem_os_shm_tx_alloc(num_bytes_requested: usize) -> *mut u8 {
 	let usize_size = core::mem::size_of::<usize>();
 	let mut result = core::ptr::null_mut();
 	unsafe {
 		cortex_m::interrupt::free(|cs| {
+			let num_bytes_allocated = num_bytes_requested + usize_size;
 			let layout =
-				core::alloc::Layout::from_size_align_unchecked(num_bytes + usize_size, usize_size);
+				core::alloc::Layout::from_size_align_unchecked(num_bytes_allocated, usize_size);
 			if let Some(ref mut allocator) = *crate::TX_ALLOCATOR.borrow(cs).borrow_mut() {
 				match allocator.allocate_first_fit(layout) {
-					Ok(block) => {
+					Ok(real_block) => {
+						let real_ptr = real_block.as_ptr();
 						// We need the block size to run the de-allocation. Store it in the first four bytes.
-						core::ptr::write_volatile::<usize>(block.as_ptr() as *mut usize, num_bytes);
+						core::ptr::write_volatile::<usize>(
+							real_ptr as *mut usize,
+							num_bytes_allocated,
+						);
 						// Give them the rest of the block
-						result = block.as_ptr().offset(usize_size as isize);
+						result = real_ptr.offset(usize_size as isize);
 					}
 					Err(_e) => {
 						// Ignore
@@ -232,17 +241,18 @@ pub extern "C" fn nrf_modem_os_shm_tx_alloc(num_bytes: usize) -> *mut u8 {
 /// @param ptr Th buffer to free.
 #[no_mangle]
 pub extern "C" fn nrf_modem_os_shm_tx_free(ptr: *mut u8) {
-	debug!("nrf_modem_os_shm_tx_free({:?})", ptr);
 	let usize_size = core::mem::size_of::<usize>() as isize;
 	unsafe {
 		cortex_m::interrupt::free(|cs| {
 			// Fetch the size from the previous four bytes
 			let real_ptr = ptr.offset(-usize_size);
-			let num_bytes = core::ptr::read_volatile::<usize>(real_ptr as *const usize);
-			let layout =
-				core::alloc::Layout::from_size_align_unchecked(num_bytes, usize_size as usize);
+			let num_bytes_allocated = core::ptr::read_volatile::<usize>(real_ptr as *const usize);
+			let layout = core::alloc::Layout::from_size_align_unchecked(
+				num_bytes_allocated,
+				usize_size as usize,
+			);
 			if let Some(ref mut allocator) = *crate::TX_ALLOCATOR.borrow(cs).borrow_mut() {
-				allocator.deallocate(core::ptr::NonNull::new_unchecked(ptr), layout);
+				allocator.deallocate(core::ptr::NonNull::new_unchecked(real_ptr), layout);
 			}
 		});
 	}
