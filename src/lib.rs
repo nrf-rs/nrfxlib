@@ -1,27 +1,27 @@
 //! # nrfxlib - a Rust library for the nRF9160 interface C library
 //!
 //! This crate contains wrappers for functions and types defined in Nordic's
-//! libbsd, aka nrfxlib.
+//! libmodem, which is part of nrfxlib.
 //!
-//! The `nrfxlib_sys` crate is the auto-generated wrapper for `bsd_os.h` and
-//! `nrf_socket.h`. This crate contains Rustic wrappers for those
+//! The `nrfxlib_sys` crate is the auto-generated wrapper for `nrf_modem_os.h`
+//! and `nrf_socket.h`. This crate contains Rustic wrappers for those
 //! auto-generated types.
 //!
-//! To bring up the LTE stack you need to call `bsd_init()`. Before that you
-//! need to enable the EGU1 and EGU2 interrupts, and arrange for the relevant
-//! functions (`application_irq_handler` and `trace_irq_handler`
-//! respectively) to be called when they occur. You also need to call
-//! `IPC_IRQHandler()` when an IPC interrupt occurs.
+//! To bring up the LTE stack you need to call `nrf_modem_init()`. Before that
+//! you need to enable the EGU1 and EGU2 interrupts, and arrange for the
+//! relevant functions (`application_irq_handler` and `trace_irq_handler`
+//! respectively) to be called when they occur. The IPC interrupt handler
+//! is registered by the relevant callback.
 //!
-//! To talk to the LTE modem, use the `send_at_command()` function. It will
-//! call the callback with the response received from the modem.
+//! To talk to the LTE modem, use the `at::send_at_command()` function. It will call
+//! the callback with the response received from the modem.
 //!
 //! To automatically send the AT commands which initialise the modem and wait
-//! until it has registered on the network, call the `wait_for_lte()`
-//! function. Once that is complete, you can create TCP or TLS sockets and
-//! send/receive data.
+//! until it has registered on the network, call the `wait_for_lte()` function.
+//! Once that is complete, you can create TCP or TLS sockets and send/receive
+//! data.
 //!
-//! Copyright (c) 42 Technology Ltd 2019
+//! Copyright (c) 42 Technology Ltd 2021
 //!
 //! Dual-licensed under MIT and Apache 2.0. See the [README](../README.md) for
 //! more details.
@@ -49,9 +49,12 @@ pub mod udp;
 //******************************************************************************
 
 pub use api::*;
-pub use ffi::get_last_error;
+pub use ffi::{get_last_error, NrfxErr};
 pub use raw::{poll, PollEntry, PollFlags, PollResult, Pollable};
 
+use core::cell::RefCell;
+use cortex_m::interrupt::Mutex;
+use linked_list_allocator::Heap;
 use log::{debug, trace};
 use nrf9160_pac as cpu;
 use nrfxlib_sys as sys;
@@ -109,6 +112,18 @@ pub enum Error {
 	TooManySockets,
 }
 
+/// We need to wrap our heap so it's creatable at run-time and accessible from an ISR.
+///
+/// * The Mutex allows us to safely share the heap between interrupt routines
+///   and the main thread - and nrfxlib will definitely use the heap in an
+///   interrupt.
+/// * The RefCell lets us share and object and mutate it (but not at the same
+///   time)
+/// * The Option is because the `linked_list_allocator::empty()` function is not
+///   `const` yet and cannot be called here
+///
+type WrappedHeap = Mutex<RefCell<Option<Heap>>>;
+
 //******************************************************************************
 // Constants
 //******************************************************************************
@@ -119,7 +134,16 @@ pub enum Error {
 // Global Variables
 //******************************************************************************
 
-// None
+/// Our general heap.
+///
+/// We initialise it later with a static variable as the backing store.
+static LIBRARY_ALLOCATOR: WrappedHeap = Mutex::new(RefCell::new(None));
+
+/// Our transmit heap.
+
+/// We initalise this later using a special region of shared memory that can be
+/// seen by the Cortex-M33 and the modem CPU.
+static TX_ALLOCATOR: WrappedHeap = Mutex::new(RefCell::new(None));
 
 //******************************************************************************
 // Macros
@@ -131,23 +155,59 @@ pub enum Error {
 // Public Functions and Impl on Public Types
 //******************************************************************************
 
-/// Start the BSD library
-pub fn init(trace_on: bool) -> Result<(), Error> {
-	debug!("nrfxlib init");
-	let bsd_memory_size = if trace_on {
-		sys::BSD_RESERVED_MEMORY_SIZE
-	} else {
-		sys::BSD_RESERVED_MEMORY_SIZE_TRACE_DISABLED
+/// Start the NRF Modem library
+pub fn init() -> Result<(), Error> {
+	unsafe {
+		/// Allocate some space in global data to use as a heap.
+		static mut HEAP_MEMORY: [u32; 1024] = [0u32; 1024];
+		let heap_start = HEAP_MEMORY.as_ptr() as usize;
+		let heap_size = HEAP_MEMORY.len() * core::mem::size_of::<u32>();
+		cortex_m::interrupt::free(|cs| {
+			*LIBRARY_ALLOCATOR.borrow(cs).borrow_mut() = Some(Heap::new(heap_start, heap_size))
+		});
+	}
+
+	// Tell nrf_modem what memory it can use.
+	let params = sys::nrf_modem_init_params_t {
+		shmem: sys::nrf_modem_shmem_cfg {
+			ctrl: sys::nrf_modem_shmem_cfg__bindgen_ty_1 {
+				// At start of shared memory (see memory.x)
+				base: 0x2001_0000,
+				// This is the amount specified in the NCS 1.5.1 release.
+				size: 0x0000_04e8,
+			},
+			tx: sys::nrf_modem_shmem_cfg__bindgen_ty_2 {
+				// Follows on from control buffer
+				base: 0x2001_04e8,
+				// This is the amount specified in the NCS 1.5.1 release.
+				size: 0x0000_2000,
+			},
+			rx: sys::nrf_modem_shmem_cfg__bindgen_ty_3 {
+				// Follows on from TX buffer
+				base: 0x2001_24e8,
+				// This is the amount specified in the NCS 1.5.1 release.
+				size: 0x0000_2000,
+			},
+			// No trace info
+			trace: sys::nrf_modem_shmem_cfg__bindgen_ty_4 { base: 0, size: 0 },
+		},
+		ipc_irq_prio: 0,
 	};
 
-	let result = unsafe {
-		sys::bsd_init(&sys::bsd_init_params_t {
-			trace_on,
-			bsd_memory_address: sys::BSD_RESERVED_MEMORY_ADDRESS,
-			bsd_memory_size,
-		})
-	};
+	unsafe {
+		// Use the same TX memory region as above
+		cortex_m::interrupt::free(|cs| {
+			*TX_ALLOCATOR.borrow(cs).borrow_mut() = Some(Heap::new(
+				params.shmem.tx.base as usize,
+				params.shmem.tx.size as usize,
+			))
+		});
+	}
 
+	// OK, let's start the library
+	let result = unsafe { sys::nrf_modem_init(&params, sys::nrf_modem_mode_t_NORMAL_MODE) };
+
+	// Was it happy?
 	if result < 0 {
 		Err(Error::Nordic("init", result, ffi::get_last_error()))
 	} else {
@@ -156,11 +216,11 @@ pub fn init(trace_on: bool) -> Result<(), Error> {
 	}
 }
 
-/// Stop the BSD library
+/// Stop the NRF Modem library
 pub fn shutdown() {
 	debug!("nrfxlib shutdown");
 	unsafe {
-		sys::bsd_shutdown();
+		sys::nrf_modem_shutdown();
 	}
 	trace!("nrfxlib shutdown complete");
 }

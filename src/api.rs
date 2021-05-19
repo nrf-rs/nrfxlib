@@ -51,7 +51,7 @@ use nrfxlib_sys as sys;
 /// You must call this when an EGU1 interrupt occurs.
 pub fn application_irq_handler() {
 	unsafe {
-		sys::bsd_os_application_irq_handler();
+		sys::nrf_modem_os_application_irq_handler();
 	}
 }
 
@@ -59,15 +59,14 @@ pub fn application_irq_handler() {
 /// must call this when an EGU2 interrupt occurs.
 pub fn trace_irq_handler() {
 	unsafe {
-		sys::bsd_os_trace_irq_handler();
+		sys::nrf_modem_os_trace_irq_handler();
 	}
 }
 
-/// Trampoline into the BSD library function `IPC_IRQHandler`. You must call
-/// this when an IPC interrupt occurs.
+/// IPC code now lives outside `lib_modem`, so call our IPC handler function.
 pub fn ipc_irq_handler() {
 	unsafe {
-		crate::ffi::IPC_IRQHandler();
+		crate::ffi::ipc_irq_handler();
 	}
 }
 

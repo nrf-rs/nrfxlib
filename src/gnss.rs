@@ -50,7 +50,7 @@ pub enum GnssData {
 }
 
 /// Specifies which NMEA fields you want from the GNSS sub-system.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct NmeaMask(u16);
 
 /// The specific fields you can enable or disable in an `NmeaMask`.
@@ -70,7 +70,7 @@ pub enum NmeaField {
 }
 
 /// Specifies which non-volatile fields you want to delete before starting the GNSS.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub struct DeleteMask(u32);
 
 /// The specific fields you can enable or disable in a `DeleteMask`.
