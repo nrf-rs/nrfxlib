@@ -23,13 +23,12 @@ baseband, and a GNSS socket so you can read GPS data.
 
 ## Getting the static library
 
-We use a crate called `nrfxlib-sys` to link to the library. This crate
-includes Nordic's header files and static library as a git sub-module (from
-their [Github page](https://github.com/NordicPlayground/nrfxlib)) and runs
-[`bindgen`] to generate Rust 'headers' which correspond to the functions and
-constants in the relevant header files. You will need bindgen and LLVM to
-be installed for [`bindgen`] to work, so please do see their
-[documentation](https://github.com/rust-lang/rust-bindgen).
+We use a crate called `nrfxlib-sys` to link to the library. This crate includes
+Nordic's header files and static library as a git sub-module (from their [Github
+page](https://github.com/NordicPlayground/nrfxlib)) and runs [`bindgen`] to
+generate Rust 'headers' which correspond to the functions and constants in the
+relevant header files. You no longer need to install `bindgen` - it gets pulled
+in as a crate - but you do need to use Rust 1.51 or higher.
 
 [`bindgen`]: https://crates.io/crates/bindgen
 
@@ -74,9 +73,19 @@ See [nrf9160-demo](https://github.com/42-technology-ltd/nrf9160-demo) for a demo
 
 ## Changelog
 
-### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/master) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.5.0...master))
+### Unreleased Changes ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/develop) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.6.0...develop))
 
-* Updated to nrfxlib version 1.4.2. This requires Rust v1.51 as we use the new resolver to allow bindgen as a build-dep.
+* None
+
+### v0.6.0 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.6.0) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.5.0...v0.6.0))
+
+* Updated to nrfxlib-sys v1.5.1.
+  * Requires Rust v1.51 as we use the new resolver to allow bindgen as a build-dep
+  * Rename FFI exports from `bsd_X` to `nrf_modem_X`
+  * Implement IPC functionality
+  * Implement library and transmit heaps
+  * Supply hard-float libraries by default. The nRF9160 has an FPU so we might as well use the VFP registers.
+* Update to latest heapless - no more `heapless::consts::Uxx`
 
 ### v0.5.0 ([Source](https://github.com/42-technology-ltd/nrfxlib/tree/v0.5.0) | [Changes](https://github.com/42-technology-ltd/nrfxlib/compare/v0.4.0...v0.5.0))
 
