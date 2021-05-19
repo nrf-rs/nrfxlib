@@ -134,8 +134,7 @@ impl TlsSocket {
 
 		let mut result;
 		// Now, make a null-terminated hostname
-		let mut hostname_smallstring: heapless::String<heapless::consts::U64> =
-			heapless::String::new();
+		let mut hostname_smallstring: heapless::String<64> = heapless::String::new();
 		write!(hostname_smallstring, "{}\0", hostname).map_err(|_| Error::HostnameTooLong)?;
 		// Now call getaddrinfo with some hints
 		let hints = sys::nrf_addrinfo {
@@ -174,7 +173,7 @@ impl TlsSocket {
 					sin_len: core::mem::size_of::<sys::nrf_sockaddr_in>() as u8,
 					sin_family: sys::NRF_AF_INET as i32,
 					sin_port: htons(port),
-					sin_addr: dns_addr.sin_addr.clone(),
+					sin_addr: dns_addr.sin_addr,
 				};
 
 				debug!("Trying IP address {}", &crate::NrfSockAddrIn(connect_addr));
