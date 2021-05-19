@@ -306,10 +306,10 @@ impl<'a> SocketOption<'a> {
 	}
 }
 
-impl Into<i32> for SocketDomain {
-	fn into(self) -> i32 {
+impl From<SocketDomain> for i32 {
+	fn from(s: SocketDomain) -> i32 {
 		use SocketDomain::*;
-		match self {
+		match s {
 			Local => sys::NRF_AF_LOCAL as i32,
 			Lte => sys::NRF_AF_LTE as i32,
 			Inet => sys::NRF_AF_INET as i32,
@@ -317,20 +317,20 @@ impl Into<i32> for SocketDomain {
 	}
 }
 
-impl Into<i32> for SocketType {
-	fn into(self) -> i32 {
+impl From<SocketType> for i32 {
+	fn from(s: SocketType) -> i32 {
 		use SocketType::*;
-		match self {
+		match s {
 			Stream => sys::NRF_SOCK_STREAM as i32,
 			Datagram => sys::NRF_SOCK_DGRAM as i32,
 		}
 	}
 }
 
-impl Into<i32> for SocketProtocol {
-	fn into(self) -> i32 {
+impl From<SocketProtocol> for i32 {
+	fn from(s: SocketProtocol) -> i32 {
 		use SocketProtocol::*;
-		match self {
+		match s {
 			At => sys::NRF_PROTO_AT as i32,
 			Tcp => sys::NRF_IPPROTO_TCP as i32,
 			Udp => sys::NRF_IPPROTO_UDP as i32,
@@ -408,19 +408,19 @@ impl<'a> PollEntry<'a> {
 /// let mut socket1 = AtSocket::new();
 /// let mut socket2 = GnssSocket::new();
 /// let mut poll_list = [
-/// 	PollEntry::new(&mut socket1, PollFlags::Read),
-/// 	PollEntry::new(&mut socket2, PollFlags::Read),
+///     PollEntry::new(&mut socket1, PollFlags::Read),
+///     PollEntry::new(&mut socket2, PollFlags::Read),
 /// ];
 /// match nrfxlib::poll(&mut poll_list, 100) {
-/// 	Ok(0) => {
-///		// Timeout
-/// 	}
-/// 	Ok(n) => {
-///		// One of the sockets is ready. See `poll_list[n].result()`.
-/// 	}
-/// 	Err(e) => {
-///		// An error occurred
-/// 	}
+///     Ok(0) => {
+///         // Timeout
+///     }
+///     Ok(n) => {
+///         // One of the sockets is ready. See `poll_list[n].result()`.
+///     }
+///     Err(e) => {
+///         // An error occurred
+///     }
 /// }
 /// ```
 pub fn poll(poll_list: &mut [PollEntry], timeout_ms: u16) -> Result<i32, Error> {
@@ -462,7 +462,7 @@ pub fn poll(poll_list: &mut [PollEntry], timeout_ms: u16) -> Result<i32, Error> 
 
 pub(crate) fn htons(input: u16) -> u16 {
 	let top: u16 = (input >> 8) & 0xFF;
-	let bottom: u16 = (input >> 0) & 0xFF;
+	let bottom: u16 = input & 0xFF;
 	(bottom << 8) | top
 }
 
