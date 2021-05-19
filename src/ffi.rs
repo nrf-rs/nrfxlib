@@ -33,7 +33,7 @@ type NrfxIpcHandler = extern "C" fn(event_mask: u32, ptr: *mut u8);
 #[derive(Debug, Copy, Clone)]
 pub enum NrfxErr {
 	///< Operation performed successfully.
-	Success = (0x0BAD0000 + 0),
+	Success = 0x0BAD0000,
 	///< Internal error.
 	ErrorInternal = (0x0BAD0000 + 1),
 	///< No memory for operation.
@@ -147,33 +147,7 @@ pub extern "C" fn nrf_modem_irrecoverable_error_handler(err: u32) -> ! {
 /// memory regions. This function allocates dynamic memory for the library.
 #[no_mangle]
 pub extern "C" fn nrf_modem_os_alloc(num_bytes_requested: usize) -> *mut u8 {
-	let usize_size = core::mem::size_of::<usize>();
-	let mut result = core::ptr::null_mut();
-	unsafe {
-		cortex_m::interrupt::free(|cs| {
-			let num_bytes_allocated = num_bytes_requested + usize_size;
-			let layout =
-				core::alloc::Layout::from_size_align_unchecked(num_bytes_allocated, usize_size);
-			if let Some(ref mut allocator) = *crate::GENERIC_ALLOCATOR.borrow(cs).borrow_mut() {
-				match allocator.allocate_first_fit(layout) {
-					Ok(real_block) => {
-						let real_ptr = real_block.as_ptr();
-						// We need the block size to run the de-allocation. Store it in the first four bytes.
-						core::ptr::write_volatile::<usize>(
-							real_ptr as *mut usize,
-							num_bytes_allocated,
-						);
-						// Give them the rest of the block
-						result = real_ptr.offset(usize_size as isize);
-					}
-					Err(_e) => {
-						// Ignore
-					}
-				}
-			}
-		});
-	}
-	result
+	unsafe { generic_alloc(num_bytes_requested, &crate::LIBRARY_ALLOCATOR) }
 }
 
 /// The Modem library needs to dynamically allocate memory (a heap) for proper
@@ -184,20 +158,8 @@ pub extern "C" fn nrf_modem_os_alloc(num_bytes_requested: usize) -> *mut u8 {
 /// memory regions. This function allocates dynamic memory for the library.
 #[no_mangle]
 pub extern "C" fn nrf_modem_os_free(ptr: *mut u8) {
-	let usize_size = core::mem::size_of::<usize>() as isize;
 	unsafe {
-		cortex_m::interrupt::free(|cs| {
-			// Fetch the size from the previous four bytes
-			let real_ptr = ptr.offset(-usize_size);
-			let num_bytes_allocated = core::ptr::read_volatile::<usize>(real_ptr as *const usize);
-			let layout = core::alloc::Layout::from_size_align_unchecked(
-				num_bytes_allocated,
-				usize_size as usize,
-			);
-			if let Some(ref mut allocator) = *crate::GENERIC_ALLOCATOR.borrow(cs).borrow_mut() {
-				allocator.deallocate(core::ptr::NonNull::new_unchecked(real_ptr), layout);
-			}
-		});
+		generic_free(ptr, &crate::LIBRARY_ALLOCATOR);
 	}
 }
 
@@ -207,33 +169,7 @@ pub extern "C" fn nrf_modem_os_free(ptr: *mut u8) {
 /// @return pointer to allocated memory
 #[no_mangle]
 pub extern "C" fn nrf_modem_os_shm_tx_alloc(num_bytes_requested: usize) -> *mut u8 {
-	let usize_size = core::mem::size_of::<usize>();
-	let mut result = core::ptr::null_mut();
-	unsafe {
-		cortex_m::interrupt::free(|cs| {
-			let num_bytes_allocated = num_bytes_requested + usize_size;
-			let layout =
-				core::alloc::Layout::from_size_align_unchecked(num_bytes_allocated, usize_size);
-			if let Some(ref mut allocator) = *crate::TX_ALLOCATOR.borrow(cs).borrow_mut() {
-				match allocator.allocate_first_fit(layout) {
-					Ok(real_block) => {
-						let real_ptr = real_block.as_ptr();
-						// We need the block size to run the de-allocation. Store it in the first four bytes.
-						core::ptr::write_volatile::<usize>(
-							real_ptr as *mut usize,
-							num_bytes_allocated,
-						);
-						// Give them the rest of the block
-						result = real_ptr.offset(usize_size as isize);
-					}
-					Err(_e) => {
-						// Ignore
-					}
-				}
-			}
-		});
-	}
-	result
+	unsafe { generic_alloc(num_bytes_requested, &crate::TX_ALLOCATOR) }
 }
 
 /// Free a shared memory buffer in the TX area.
@@ -241,20 +177,8 @@ pub extern "C" fn nrf_modem_os_shm_tx_alloc(num_bytes_requested: usize) -> *mut 
 /// @param ptr Th buffer to free.
 #[no_mangle]
 pub extern "C" fn nrf_modem_os_shm_tx_free(ptr: *mut u8) {
-	let usize_size = core::mem::size_of::<usize>() as isize;
 	unsafe {
-		cortex_m::interrupt::free(|cs| {
-			// Fetch the size from the previous four bytes
-			let real_ptr = ptr.offset(-usize_size);
-			let num_bytes_allocated = core::ptr::read_volatile::<usize>(real_ptr as *const usize);
-			let layout = core::alloc::Layout::from_size_align_unchecked(
-				num_bytes_allocated,
-				usize_size as usize,
-			);
-			if let Some(ref mut allocator) = *crate::TX_ALLOCATOR.borrow(cs).borrow_mut() {
-				allocator.deallocate(core::ptr::NonNull::new_unchecked(real_ptr), layout);
-			}
-		});
+		generic_free(ptr, &crate::TX_ALLOCATOR);
 	}
 }
 
@@ -302,7 +226,7 @@ pub extern "C" fn nrfx_ipc_init(
 	let irq_num = usize::from(irq.number());
 	unsafe {
 		cortex_m::peripheral::NVIC::unmask(irq);
-		(*cortex_m::peripheral::NVIC::ptr()).ipr[irq_num].write(irq_priority.into());
+		(*cortex_m::peripheral::NVIC::ptr()).ipr[irq_num].write(irq_priority);
 	}
 	IPC_CONTEXT.store(p_context, core::sync::atomic::Ordering::SeqCst);
 	IPC_HANDLER.store(handler as usize, core::sync::atomic::Ordering::SeqCst);
@@ -314,6 +238,60 @@ pub extern "C" fn nrfx_ipc_init(
 #[no_mangle]
 pub extern "C" fn nrfx_ipc_uninit() {
 	unimplemented!();
+}
+
+/// Allocate some memory from the given heap.
+///
+/// We allocate four extra bytes so that we can store the number of bytes
+/// requested. This will be needed later when the memory is freed.
+///
+/// This function is safe to call from an ISR.
+unsafe fn generic_alloc(num_bytes_requested: usize, heap: &crate::WrappedHeap) -> *mut u8 {
+	let sizeof_usize = core::mem::size_of::<usize>();
+	let mut result = core::ptr::null_mut();
+	cortex_m::interrupt::free(|cs| {
+		let num_bytes_allocated = num_bytes_requested + sizeof_usize;
+		let layout =
+			core::alloc::Layout::from_size_align_unchecked(num_bytes_allocated, sizeof_usize);
+		if let Some(ref mut inner_alloc) = *heap.borrow(cs).borrow_mut() {
+			match inner_alloc.allocate_first_fit(layout) {
+				Ok(real_block) => {
+					let real_ptr = real_block.as_ptr();
+					// We need the block size to run the de-allocation. Store it in the first four bytes.
+					core::ptr::write_volatile::<usize>(real_ptr as *mut usize, num_bytes_allocated);
+					// Give them the rest of the block
+					result = real_ptr.add(sizeof_usize);
+				}
+				Err(_e) => {
+					// Ignore
+				}
+			}
+		}
+	});
+	result
+}
+
+/// Free some memory back on to the given heap.
+///
+/// First we must wind the pointer back four bytes to recover the `usize` we
+/// stashed during the allocation. We use this to recreate the `Layout` required
+/// for the `deallocate` function.
+///
+/// This function is safe to call from an ISR.
+unsafe fn generic_free(ptr: *mut u8, heap: &crate::WrappedHeap) {
+	let sizeof_usize = core::mem::size_of::<usize>() as isize;
+	cortex_m::interrupt::free(|cs| {
+		// Fetch the size from the previous four bytes
+		let real_ptr = ptr.offset(-sizeof_usize);
+		let num_bytes_allocated = core::ptr::read_volatile::<usize>(real_ptr as *const usize);
+		let layout = core::alloc::Layout::from_size_align_unchecked(
+			num_bytes_allocated,
+			sizeof_usize as usize,
+		);
+		if let Some(ref mut inner_alloc) = *heap.borrow(cs).borrow_mut() {
+			inner_alloc.deallocate(core::ptr::NonNull::new_unchecked(real_ptr), layout);
+		}
+	});
 }
 
 /// Call this when we have an IPC IRQ. Not `extern C` as its not called by the
