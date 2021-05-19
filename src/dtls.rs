@@ -160,7 +160,7 @@ impl DtlsSocket {
 					sin_len: core::mem::size_of::<sys::nrf_sockaddr_in>() as u8,
 					sin_family: sys::NRF_AF_INET as i32,
 					sin_port: htons(port),
-					sin_addr: dns_addr.sin_addr.clone(),
+					sin_addr: dns_addr.sin_addr,
 				};
 
 				debug!("Trying IP address {}", &crate::NrfSockAddrIn(connect_addr));

@@ -112,6 +112,18 @@ pub enum Error {
 	TooManySockets,
 }
 
+/// We need to wrap our heap so it's creatable at run-time and accessible from an ISR.
+///
+/// * The Mutex allows us to safely share the heap between interrupt routines
+///   and the main thread - and nrfxlib will definitely use the heap in an
+///   interrupt.
+/// * The RefCell lets us share and object and mutate it (but not at the same
+///   time)
+/// * The Option is because the `linked_list_allocator::empty()` function is not
+///   `const` yet and cannot be called here
+///
+type WrappedHeap = Mutex<RefCell<Option<Heap>>>;
+
 //******************************************************************************
 // Constants
 //******************************************************************************
@@ -124,30 +136,14 @@ pub enum Error {
 
 /// Our general heap.
 ///
-/// * The Mutex allows us to safely share the heap between interrupt routines
-///   and the main thread - and nrfxlib will definitely use the heap in an
-///   interrupt.
-/// * The RefCell lets us share and object and mutate it (but not at the same
-///   time)
-/// * The Option is because the `linked_list_allocator::empty()` function is not
-///   `const` yet and cannot be called here
-///
-/// We initialise it later a static variable as the backing store.
-static mut GENERIC_ALLOCATOR: Mutex<RefCell<Option<Heap>>> = Mutex::new(RefCell::new(None));
+/// We initialise it later with a static variable as the backing store.
+static LIBRARY_ALLOCATOR: WrappedHeap = Mutex::new(RefCell::new(None));
 
 /// Our transmit heap.
-///
-/// * The Mutex allows us to safely share the heap between interrupt routines
-///   and the main thread - and nrfxlib will definitely use the heap in an
-///   interrupt.
-/// * The RefCell lets us share and object and mutate it (but not at the same
-///   time)
-/// * The Option is because the `linked_list_allocator::empty()` function is not
-///   `const` yet and cannot be called here
-///
+
 /// We initalise this later using a special region of shared memory that can be
 /// seen by the Cortex-M33 and the modem CPU.
-static mut TX_ALLOCATOR: Mutex<RefCell<Option<Heap>>> = Mutex::new(RefCell::new(None));
+static TX_ALLOCATOR: WrappedHeap = Mutex::new(RefCell::new(None));
 
 //******************************************************************************
 // Macros
@@ -167,7 +163,7 @@ pub fn init() -> Result<(), Error> {
 		let heap_start = HEAP_MEMORY.as_ptr() as usize;
 		let heap_size = HEAP_MEMORY.len() * core::mem::size_of::<u32>();
 		cortex_m::interrupt::free(|cs| {
-			*GENERIC_ALLOCATOR.borrow(cs).borrow_mut() = Some(Heap::new(heap_start, heap_size))
+			*LIBRARY_ALLOCATOR.borrow(cs).borrow_mut() = Some(Heap::new(heap_start, heap_size))
 		});
 	}
 
