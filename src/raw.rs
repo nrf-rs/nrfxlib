@@ -180,6 +180,28 @@ impl Socket {
 		}
 	}
 
+	/// Perform a non-blocking write on the socket.
+	pub fn send(&self, buf: &[u8]) -> Result<Option<usize>, Error> {
+		let length = buf.len();
+		let ptr = buf.as_ptr();
+		let result = unsafe {
+			sys::nrf_send(
+				self.fd,
+				ptr as *const _,
+				length as u32,
+				sys::NRF_MSG_DONTWAIT as i32,
+			)
+		};
+		if result == -1 && get_last_error() == sys::NRF_EAGAIN as i32 {
+			// This is EAGAIN
+			Ok(None)
+		} else if result < 0 {
+			Err(Error::Nordic("send", result as i32, get_last_error()))
+		} else {
+			Ok(Some(result as usize))
+		}
+	}
+
 	/// Perform a blocking write on the socket.
 	pub fn write(&self, buf: &[u8]) -> Result<usize, Error> {
 		let length = buf.len();
