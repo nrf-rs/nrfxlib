@@ -160,10 +160,11 @@ pub fn init() -> Result<(), Error> {
 	unsafe {
 		/// Allocate some space in global data to use as a heap.
 		static mut HEAP_MEMORY: [u32; 1024] = [0u32; 1024];
-		let heap_start = HEAP_MEMORY.as_ptr() as usize;
+		let heap_start = HEAP_MEMORY.as_mut_ptr() as *mut _;
 		let heap_size = HEAP_MEMORY.len() * core::mem::size_of::<u32>();
 		cortex_m::interrupt::free(|cs| {
-			*LIBRARY_ALLOCATOR.borrow(cs).borrow_mut() = Some(Heap::new(heap_start, heap_size))
+			*LIBRARY_ALLOCATOR.borrow(cs).borrow_mut() =
+				Some(Heap::new(heap_start, heap_size))
 		});
 	}
 
@@ -198,7 +199,7 @@ pub fn init() -> Result<(), Error> {
 		// Use the same TX memory region as above
 		cortex_m::interrupt::free(|cs| {
 			*TX_ALLOCATOR.borrow(cs).borrow_mut() = Some(Heap::new(
-				params.shmem.tx.base as usize,
+				params.shmem.tx.base as *mut _,
 				params.shmem.tx.size as usize,
 			))
 		});

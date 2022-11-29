@@ -226,7 +226,7 @@ pub extern "C" fn nrfx_ipc_init(
 	let irq_num = usize::from(irq.number());
 	unsafe {
 		cortex_m::peripheral::NVIC::unmask(irq);
-		(*cortex_m::peripheral::NVIC::ptr()).ipr[irq_num].write(irq_priority);
+		(*cortex_m::peripheral::NVIC::PTR).ipr[irq_num].write(irq_priority);
 	}
 	IPC_CONTEXT.store(p_context, core::sync::atomic::Ordering::SeqCst);
 	IPC_HANDLER.store(handler as usize, core::sync::atomic::Ordering::SeqCst);
